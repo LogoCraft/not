@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Tabanlı Not Defteri</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter ve Poppins -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Ana yazı tipi olarak Inter, başlıklar için Poppins */
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(to right top, #1a1a1a, #2c0000, #4d0000); /* Koyu kırmızı-siyah gradyan */
+            color: #f8f8f8; /* Açık gri metin rengi */
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-x: hidden;
+        }
+
+        /* Ana uygulama kapsayıcısı */
+        .app-container {
+            background-color: rgba(0, 0, 0, 0.4); /* Hafif şeffaf siyah */
+            backdrop-filter: blur(10px); /* Arka planı bulanıklaştırır */
+            border-radius: 2rem; /* Daha yuvarlak köşeler */
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6); /* Derin gölge */
+            padding: 2.5rem;
+            text-align: center;
+            max-width: 900px; /* Maksimum genişlik */
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.1); /* Hafif beyaz kenarlık */
+        }
+
+        /* Başlık stili */
+        h1 {
+            font-family: 'Poppins', sans-serif;
+            font-size: 3.5rem;
+            font-weight: 700;
+            color: #e53e3e; /* Canlı kırmızı */
+            text-shadow: 0 0 15px rgba(229, 62, 62, 0.7), 0 0 25px rgba(229, 62, 62, 0.5);
+            margin-bottom: 1.5rem;
+        }
+
+        /* Not ekleme alanı */
+        .note-input-area {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .note-input-title, .note-textarea-content {
+            width: 100%;
+            padding: 1rem 1.25rem;
+            border-radius: 0.75rem;
+            border: none;
+            background-color: rgba(255, 255, 255, 0.15); /* Hafif şeffaf beyaz */
+            color: #f8f8f8; /* Açık metin */
+            font-size: 1.1rem;
+            outline: none;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .note-input-title::placeholder, .note-textarea-content::placeholder {
+            color: #bbb; /* Daha açık placeholder */
+        }
+
+        .note-input-title:focus, .note-textarea-content:focus {
+            box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.5); /* Kırmızı odak halkası */
+        }
+
+        .note-textarea-content {
+            min-height: 150px;
+            resize: vertical;
+        }
+
+        .add-note-button {
+            background-color: #e53e3e; /* Kırmızı buton */
+            color: white;
+            padding: 0.8rem 1.8rem;
+            border-radius: 0.75rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.1s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        .add-note-button:hover {
+            background-color: #c53030; /* Hover'da daha koyu kırmızı */
+            transform: translateY(-2px);
+        }
+
+        .add-note-button:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+
+        /* Arama alanı */
+        .search-area {
+            display: flex;
+            width: 100%;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .search-input {
+            flex-grow: 1;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.75rem;
+            border: none;
+            background-color: rgba(255, 255, 255, 0.15);
+            color: #f8f8f8;
+            font-size: 1.1rem;
+            outline: none;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .search-input::placeholder {
+            color: #bbb;
+        }
+
+        .search-input:focus {
+            box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.5);
+        }
+
+        /* Not listesi */
+        #notes-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Duyarlı grid */
+            gap: 1.5rem;
+            width: 100%;
+        }
+
+        /* Not kartı */
+        .note-card {
+            background-color: rgba(255, 255, 255, 0.08); /* Çok hafif şeffaf beyaz */
+            backdrop-filter: blur(5px);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            text-align: left;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .note-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .note-card-title {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #ff6347; /* Domates kırmızısı başlık */
+            margin-bottom: 0.75rem;
+            word-wrap: break-word; /* Uzun kelimeleri kes */
+        }
+
+        .note-card-content {
+            font-size: 1rem;
+            color: #f8f8f8; /* Açık metin */
+            margin-bottom: 1rem;
+            flex-grow: 1; /* İçeriğin genişlemesini sağlar */
+            word-wrap: break-word;
+            overflow: hidden; /* Taşmayı gizle */
+            text-overflow: ellipsis; /* Taşan metni ... ile göster */
+            display: -webkit-box;
+            -webkit-line-clamp: 5; /* Maksimum 5 satır göster */
+            -webkit-box-orient: vertical;
+        }
+
+        .note-card-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .note-action-button {
+            background-color: #e53e3e; /* Kırmızı */
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .note-action-button.edit {
+            background-color: #f06292; /* Pembe-kırmızı */
+        }
+        .note-action-button.delete {
+            background-color: #a00000; /* Daha koyu kırmızı */
+        }
+
+        .note-action-button:hover {
+            opacity: 0.9;
+        }
+
+        /* Mesaj kutusu */
+        .message-box {
+            padding: 1rem;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            text-align: center;
+            margin-top: 1rem;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            width: 100%;
+        }
+        .message-box.success {
+            background-color: #2f855a; /* Koyu yeşil */
+            color: #d1fae5; /* Açık yeşil metin */
+        }
+        .message-box.error {
+            background-color: #c53030; /* Koyu kırmızı */
+            color: #fee2e2; /* Açık kırmızı metin */
+        }
+        .message-box.show {
+            opacity: 1;
+        }
+
+        /* Modal (Not Düzenleme) */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background-color: #1a1a1a; /* Koyu siyah modal */
+            padding: 2rem;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            max-width: 600px;
+            width: 90%;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .modal-close-button {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: #f8f8f8; /* Açık renk */
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+        .modal-close-button:hover {
+            color: #e53e3e; /* Kırmızı */
+        }
+
+        /* Medya sorguları: Mobil uyumluluk */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.5rem;
+            }
+            .app-container {
+                padding: 1.5rem;
+                border-radius: 1.5rem;
+            }
+            .note-input-title, .note-textarea-content, .add-note-button, .search-input {
+                font-size: 1rem;
+                padding: 0.8rem 1rem;
+            }
+            .add-note-button {
+                width: 100%;
+            }
+            .search-area {
+                flex-direction: column;
+                gap: 0.75rem;
+            }
+            #notes-list {
+                grid-template-columns: 1fr; /* Mobil için tek sütun */
+                gap: 1rem;
+            }
+            .note-card {
+                padding: 1rem;
+                border-radius: 0.75rem;
+            }
+            .note-card-title {
+                font-size: 1.25rem;
+            }
+            .note-card-content {
+                font-size: 0.9rem;
+            }
+            .note-action-button {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.8rem;
+            }
+            .modal-content {
+                padding: 1.5rem;
+                border-radius: 1rem;
+            }
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <div class="app-container">
+        <h1>Notlarım</h1>
+
+        <!-- Not Ekleme Alanı -->
+        <div class="note-input-area">
+            <input type="text" id="noteTitle" class="note-input-title" placeholder="Not Başlığı">
+            <textarea id="noteContent" class="note-textarea-content" placeholder="Notunuzu buraya yazın..."></textarea>
+            <button id="addNoteBtn" class="add-note-button">Not Ekle</button>
+        </div>
+
+        <!-- Arama Alanı -->
+        <div class="search-area">
+            <input type="text" id="searchInput" class="search-input" placeholder="Notlarda ara...">
+        </div>
+
+        <!-- Not Listesi -->
+        <div id="notes-list">
+            <!-- Notlar buraya JavaScript ile eklenecek -->
+        </div>
+
+        <!-- Mesaj Kutusu -->
+        <div id="appMessage" class="message-box"></div>
+    </div>
+
+    <!-- Not Düzenleme Modalı -->
+    <div id="editModal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close-button" id="closeModalBtn">&times;</button>
+            <h2 class="text-3xl font-bold text-center text-white mb-4">Notu Düzenle</h2>
+            <input type="text" id="editNoteTitle" class="note-input-title" placeholder="Not Başlığı">
+            <textarea id="editNoteContent" class="note-textarea-content" placeholder="Notunuzu buraya yazın..."></textarea>
+            <button id="saveEditBtn" class="add-note-button">Değişiklikleri Kaydet</button>
+        </div>
+    </div>
+
+    <script>
+        // DOM elemanlarını seçiyoruz
+        const noteTitleInput = document.getElementById('noteTitle');
+        const noteContentInput = document.getElementById('noteContent');
+        const addNoteBtn = document.getElementById('addNoteBtn');
+        const searchInput = document.getElementById('searchInput');
+        const notesList = document.getElementById('notes-list');
+        const appMessage = document.getElementById('appMessage');
+
+        const editModal = document.getElementById('editModal');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const editNoteTitleInput = document.getElementById('editNoteTitle');
+        const editNoteContentInput = document.getElementById('editNoteContent');
+        const saveEditBtn = document.getElementById('saveEditBtn');
+
+        let notes = []; // Notları tutacak dizi
+        let currentEditingNoteId = null; // Düzenlenen notun ID'si
+
+        // Sayfa yüklendiğinde notları localStorage'dan yükle
+        document.addEventListener('DOMContentLoaded', loadNotes);
+
+        // Not ekle butonu olay dinleyicisi
+        addNoteBtn.addEventListener('click', addNote);
+
+        // Arama inputu olay dinleyicisi
+        searchInput.addEventListener('input', filterNotes);
+
+        // Modal kapatma butonu
+        closeModalBtn.addEventListener('click', () => {
+            editModal.classList.remove('show');
+            currentEditingNoteId = null;
+        });
+
+        // Modal dışına tıklayınca kapat
+        editModal.addEventListener('click', (e) => {
+            if (e.target === editModal) {
+                editModal.classList.remove('show');
+                currentEditingNoteId = null;
+            }
+        });
+
+        // Düzenlenmiş notu kaydet butonu
+        saveEditBtn.addEventListener('click', saveEditedNote);
+
+
+        // Not ekleme fonksiyonu
+        function addNote() {
+            const title = noteTitleInput.value.trim();
+            const content = noteContentInput.value.trim();
+
+            if (title === '' || content === '') {
+                displayMessage('Başlık ve içerik boş bırakılamaz!', 'error');
+                return;
+            }
+
+            const newNote = {
+                id: Date.now(), // Benzersiz ID
+                title: title,
+                content: content,
+                timestamp: new Date().toLocaleString() // Notun oluşturulma zamanı
+            };
+
+            notes.unshift(newNote); // Yeni notu en başa ekle
+            saveNotes(); // Notları kaydet
+            renderNotes(notes); // Notları yeniden çiz
+            displayMessage('Not başarıyla eklendi!', 'success');
+
+            // Giriş alanlarını temizle
+            noteTitleInput.value = '';
+            noteContentInput.value = '';
+        }
+
+        // Notları localStorage'a kaydetme fonksiyonu
+        function saveNotes() {
+            localStorage.setItem('notes', JSON.stringify(notes));
+        }
+
+        // Notları localStorage'dan yükleme fonksiyonu
+        function loadNotes() {
+            const storedNotes = localStorage.getItem('notes');
+            if (storedNotes) {
+                notes = JSON.parse(storedNotes);
+            }
+            renderNotes(notes); // Yüklenen notları çiz
+        }
+
+        // Notları ekranda çizme/güncelleme fonksiyonu
+        function renderNotes(notesToRender) {
+            notesList.innerHTML = ''; // Mevcut notları temizle
+
+            if (notesToRender.length === 0) {
+                notesList.innerHTML = '<p class="text-center text-gray-400 text-lg">Henüz not yok veya arama sonucu bulunamadı.</p>';
+                return;
+            }
+
+            notesToRender.forEach(note => {
+                const noteCard = document.createElement('div');
+                noteCard.classList.add('note-card');
+                noteCard.dataset.id = note.id; // Not ID'sini veri özniteliği olarak sakla
+
+                noteCard.innerHTML = `
+                    <h3 class="note-card-title">${note.title}</h3>
+                    <p class="note-card-content">${note.content}</p>
+                    <p class="text-xs text-gray-400 mt-auto">${note.timestamp}</p>
+                    <div class="note-card-actions">
+                        <button class="note-action-button edit" data-id="${note.id}">Düzenle</button>
+                        <button class="note-action-button delete" data-id="${note.id}">Sil</button>
+                    </div>
+                `;
+                notesList.appendChild(noteCard);
+            });
+
+            // Düzenle ve Sil butonlarına olay dinleyicileri ekle
+            document.querySelectorAll('.note-action-button.edit').forEach(button => {
+                button.addEventListener('click', (e) => openEditModal(e.target.dataset.id));
+            });
+            document.querySelectorAll('.note-action-button.delete').forEach(button => {
+                button.addEventListener('click', (e) => deleteNote(e.target.dataset.id));
+            });
+        }
+
+        // Notu silme fonksiyonu
+        function deleteNote(id) {
+            // Confirm yerine daha şık bir modal kullanılabilir
+            if (confirm('Bu notu silmek istediğinizden emin misiniz?')) {
+                notes = notes.filter(note => note.id != id); // Silinecek notu filtrele
+                saveNotes();
+                renderNotes(notes);
+                displayMessage('Not başarıyla silindi!', 'success');
+            }
+        }
+
+        // Notu düzenleme modalını açma
+        function openEditModal(id) {
+            const noteToEdit = notes.find(note => note.id == id);
+            if (noteToEdit) {
+                currentEditingNoteId = id;
+                editNoteTitleInput.value = noteToEdit.title;
+                editNoteContentInput.value = noteToEdit.content;
+                editModal.classList.add('show');
+            }
+        }
+
+        // Düzenlenmiş notu kaydetme
+        function saveEditedNote() {
+            const newTitle = editNoteTitleInput.value.trim();
+            const newContent = editNoteContentInput.value.trim();
+
+            if (newTitle === '' || newContent === '') {
+                displayMessage('Başlık ve içerik boş bırakılamaz!', 'error');
+                return;
+            }
+
+            notes = notes.map(note => {
+                if (note.id == currentEditingNoteId) {
+                    return {
+                        ...note,
+                        title: newTitle,
+                        content: newContent,
+                        timestamp: new Date().toLocaleString() // Güncelleme zamanını da kaydet
+                    };
+                }
+                return note;
+            });
+
+            saveNotes();
+            renderNotes(notes);
+            editModal.classList.remove('show');
+            currentEditingNoteId = null;
+            displayMessage('Not başarıyla güncellendi!', 'success');
+        }
+
+        // Notları filtreleme fonksiyonu
+        function filterNotes() {
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            if (searchTerm === '') {
+                renderNotes(notes); // Arama boşsa tüm notları göster
+                return;
+            }
+
+            const filtered = notes.filter(note =>
+                note.title.toLowerCase().includes(searchTerm) ||
+                note.content.toLowerCase().includes(searchTerm)
+            );
+            renderNotes(filtered); // Filtrelenmiş notları göster
+        }
+
+        // Mesaj gösterme fonksiyonu (uygulama genelinde)
+        function displayMessage(message, type) {
+            appMessage.textContent = message;
+            appMessage.className = 'message-box show'; // Sınıfları sıfırla ve 'show' ekle
+
+            if (type === 'success') {
+                appMessage.classList.add('success');
+            } else if (type === 'error') {
+                appMessage.classList.add('error');
+            }
+
+            // Belirli bir süre sonra mesajı gizle
+            setTimeout(() => {
+                appMessage.classList.remove('show');
+            }, 3000); // 3 saniye sonra kaybolur
+        }
+    </script>
+</body>
+</html>
