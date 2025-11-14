@@ -3,697 +3,358 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>İngilizce - Türkçe Paralel Okuma Sistemi</title>
-    <!-- Tailwind CSS Yüklemesi -->
+    <title>FitPlan - Kişisel Fitness Planlayıcı</title>
+    
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        // DARK MODE SETUP: HTML tag'ine 'dark' class'ını ekler.
-        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
-    </script>
-    <!-- Firebase SDK Yüklemesi -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, query, addDoc, getDocs, doc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        setLogLevel('Debug');
-
-        // Global State Management
-        window.state = {
-            pages: [],
-            topics: [], // {id: '...', name: '...'}
-            currentTopicId: null,
-            currentPageIndex: 0,
-            db: null,
-            auth: null,
-            userId: null,
-            appId: null,
-            isAuthReady: false,
-            isSidebarOpen: false,
-            isDarkMode: document.documentElement.classList.contains('dark')
-        };
-
-        const initialSherlockText = {
-            englishText: "CHAPTER I.\nMr. Sherlock Holmes\n\nMr. Sherlock Holmes, who was usually very late in the mornings, save upon those not infrequent occasions when he was up all night, was seated at the breakfast table. I stood upon the hearth-rug and picked up the stick which our visitor had left behind him the night before. It was a fine, thick piece of wood, bulbous-headed, of the sort which is known as a “Penang lawyer.” Just under the head was a broad silver band nearly an inch across. “To James Mortimer, M.R.C.S., from his friends of the C.C.H.,” was engraved upon it, with the date “1884.” It was just such a stick as the old-fashioned family practitioner used to carry—dignified, solid, and reassuring.",
-            turkishText: "BİRİNCİ BÖLÜM.\nBay Sherlock Holmes\n\nBay Sherlock Holmes, tüm gece ayakta kaldığı o nadir olmayan durumlar haricinde, sabahları genellikle çok geç kalkan biriydi, şu an kahvaltı masasında oturuyordu. Ben şömine halısının üzerinde duruyordum ve ziyaretçimizin bir önceki gece unuttuğu bastonu elime aldım. Bu, \"Penang avukatı\" olarak bilinen türden, tepesi şişkin, güzel, kalın bir tahta parçasıydı. Hemen başının altında neredeyse bir inç genişliğinde, kalın bir gümüş bant vardı. Üzerine \"James Mortimer, M.R.C.S.'ye, C.C.H.'deki dostlarından\" yazısı ve \"1884\" tarihi kazınmıştı. Tam da eski usul aile hekimlerinin taşıdığı türden—ağırbaşlı, sağlam ve güven veren bir bastondu.",
-            timestamp: new Date().getTime() 
-        };
-
-        // --- FIREBASE REFERANSLARI VE YARDIMCI FONKSİYONLAR ---
-
-        function getTopicsCollectionRef() {
-            if (!window.state.db || !window.state.userId || !window.state.appId) return null;
-            // Tüm konuları tutan ana koleksiyon
-            const collectionPath = `artifacts/${window.state.appId}/users/${window.state.userId}/topics`;
-            return collection(window.state.db, collectionPath);
-        }
-
-        function getPagesCollectionRef(topicId) {
-            if (!window.state.db || !window.state.userId || !window.state.appId || !topicId) return null;
-            // Belirli bir konunun altındaki sayfalar koleksiyonu
-            const collectionPath = `artifacts/${window.state.appId}/users/${window.state.userId}/topics/${topicId}/pages`;
-            return collection(window.state.db, collectionPath);
-        }
-
-        // --- FIREBASE KURULUMU VE VERİ YÖNETİMİ ---
-
-        async function setupFirebase() {
-            try {
-                const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-                const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-                window.state.appId = typeof __app_id !== 'undefined' ? __app_id : 'default-bilingual-reader-v2';
-                
-                const app = initializeApp(firebaseConfig);
-                window.state.db = getFirestore(app);
-                window.state.auth = getAuth(app);
-
-                if (initialAuthToken) {
-                    await signInWithCustomToken(window.state.auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(window.state.auth);
-                }
-
-                window.state.userId = window.state.auth.currentUser?.uid || crypto.randomUUID();
-                window.state.isAuthReady = true;
-                console.log("Firebase: Başlatıldı ve kullanıcı ID:", window.state.userId);
-
-                setupTopicsListener();
-
-            } catch (e) {
-                console.error("Firebase kurulumunda veya oturum açmada hata:", e);
-                window.state.isAuthReady = true; 
-            }
-        }
-        
-        // Tüm konuları dinler
-        function setupTopicsListener() {
-            const topicsRef = getTopicsCollectionRef();
-            if (!topicsRef) return;
-
-            onSnapshot(query(topicsRef), async (snapshot) => {
-                const newTopics = [];
-                snapshot.forEach(doc => {
-                    newTopics.push({ id: doc.id, name: doc.data().name || 'İsimsiz Konu' });
-                });
-
-                window.state.topics = newTopics;
-                renderSidebar();
-                
-                // Konu listesi değiştiğinde varsayılan konuyu ayarla
-                if (!window.state.currentTopicId && newTopics.length > 0) {
-                    // En son oluşturulan konuyu seç (basit bir yaklaşım)
-                    window.state.currentTopicId = newTopics[newTopics.length - 1].id; 
-                    await seedInitialData(window.state.currentTopicId);
-                    setupPagesListener(window.state.currentTopicId);
-                } else if (newTopics.length > 0 && !newTopics.some(t => t.id === window.state.currentTopicId)) {
-                    // Mevcut seçili konu silinmişse, son konuya geç
-                    window.state.currentTopicId = newTopics[newTopics.length - 1].id;
-                    setupPagesListener(window.state.currentTopicId);
-                } else if (newTopics.length === 0) {
-                    // Hiç konu yoksa yeni bir tane oluştur
-                    await createNewTopic('Okuma Defteri');
-                }
-            }, (error) => {
-                console.error("Topics Listener Hatası:", error);
-            });
-        }
-
-        // Seçili konunun sayfalarını dinler
-        function setupPagesListener(topicId) {
-            // Önceki dinleyici varsa kapat (sadece tek dinleyici aktif olmalı)
-            if (window.state.unsubscribePages) {
-                window.state.unsubscribePages();
-            }
-
-            const pagesRef = getPagesCollectionRef(topicId);
-            if (!pagesRef) {
-                window.state.pages = [];
-                renderPage();
-                return;
-            }
-
-            // Yeni dinleyiciyi başlat
-            window.state.unsubscribePages = onSnapshot(query(pagesRef), (snapshot) => {
-                const newPages = [];
-                snapshot.forEach(doc => {
-                    newPages.push({ id: doc.id, ...doc.data() });
-                });
-                
-                // Zaman damgasına göre sırala
-                newPages.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0)); 
-                
-                window.state.pages = newPages;
-                
-                // Mevcut sayfa dizinini koru veya ayarla
-                if (window.state.currentPageIndex >= newPages.length && newPages.length > 0) {
-                    window.state.currentPageIndex = newPages.length - 1;
-                } else if (newPages.length === 0) {
-                    window.state.currentPageIndex = 0;
-                }
-
-                renderPage();
-            }, (error) => {
-                console.error("Pages Listener Hatası:", error);
-            });
-        }
-        
-        // Başlangıç verisini ekle (konu boşsa)
-        async function seedInitialData(topicId) {
-            const pagesRef = getPagesCollectionRef(topicId);
-            if (!pagesRef) return;
-
-            try {
-                const snapshot = await getDocs(pagesRef);
-                if (snapshot.empty) {
-                    await addDoc(pagesRef, initialSherlockText);
-                    console.log("Firestore: Başlangıç verisi eklendi.");
-                }
-            } catch (e) {
-                console.error("Başlangıç verisi eklenirken hata:", e);
-            }
-        }
-
-        // Yeni bir konu oluşturur ve ona geçer
-        async function createNewTopic(name) {
-            const topicsRef = getTopicsCollectionRef();
-            if (!topicsRef || !name) return;
-            
-            try {
-                const newTopicRef = await addDoc(topicsRef, {
-                    name: name,
-                    createdAt: new Date().getTime()
-                });
-                console.log("Firestore: Yeni konu oluşturuldu:", name);
-                
-                // Otomatik olarak yeni konuya geç
-                switchTopic(newTopicRef.id); 
-                
-            } catch (e) {
-                console.error("Yeni konu oluşturulurken hata:", e);
-                
-            }
-        }
-        
-        // Belirli bir konuya geçer
-        window.switchTopic = function(topicId) {
-            if (topicId === window.state.currentTopicId) {
-                toggleSidebar(false);
-                return;
-            }
-
-            window.state.currentTopicId = topicId;
-            window.state.currentPageIndex = 0; // Yeni konuya geçince ilk sayfadan başla
-            
-            setupPagesListener(topicId);
-            toggleSidebar(false);
-            renderSidebar(); // Sidebar'ı hemen güncelle
-        }
-
-        // --- RENDER VE UI YÖNETİMİ ---
-
-        function renderSidebar() {
-            const topicList = document.getElementById('topic-list');
-            const currentTopicElement = document.getElementById('current-topic-name');
-            const currentTopic = window.state.topics.find(t => t.id === window.state.currentTopicId);
-            
-            // Mevcut Konu Adını Güncelle
-            if (currentTopic) {
-                currentTopicElement.innerText = currentTopic.name;
-            } else {
-                currentTopicElement.innerText = "Konu Seçilmedi";
-            }
-
-            // Konu Listesini Güncelle
-            topicList.innerHTML = '';
-            window.state.topics.forEach(topic => {
-                const isActive = topic.id === window.state.currentTopicId;
-                const button = document.createElement('button');
-                button.className = `w-full text-left p-3 rounded-lg transition duration-200 text-sm truncate ${
-                    isActive 
-                        ? 'bg-blue-600 text-white font-bold shadow-md' 
-                        : 'text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700'
-                }`;
-                button.innerText = topic.name;
-                button.onclick = () => window.switchTopic(topic.id);
-                topicList.appendChild(button);
-            });
-        }
-
-        function renderPage() {
-            const englishColumn = document.getElementById('english-column');
-            const turkishColumn = document.getElementById('turkish-column');
-            const pageCounter = document.getElementById('page-counter');
-            const prevButton = document.getElementById('prev-button');
-            const nextButton = document.getElementById('next-button');
-            const currentTopic = window.state.topics.find(t => t.id === window.state.currentTopicId);
-
-            const index = window.state.currentPageIndex;
-            const pages = window.state.pages;
-
-            // Navigasyon başlığını güncelle
-            const topicName = currentTopic ? currentTopic.name.toUpperCase() : 'OKUYUCU';
-            document.getElementById('topic-nav-header').innerText = `${topicName} (${pages.length} Sayfa)`;
-            
-            englishColumn.scrollTop = 0;
-            turkishColumn.scrollTop = 0;
-
-            if (pages.length > 0) {
-                const page = pages[index];
-                englishColumn.innerHTML = formatTextForHTML(page.englishText);
-                turkishColumn.innerHTML = formatTextForHTML(page.turkishText);
-                pageCounter.innerText = `${index + 1} / ${pages.length}`;
-                
-                prevButton.disabled = index === 0;
-                nextButton.disabled = index === pages.length - 1;
-
-            } else {
-                const message = window.state.currentTopicId 
-                    ? `Bu konuya ait sayfa bulunamadı. Lütfen '+' düğmesine basarak yeni bir sayfa çevirip ekleyin.`
-                    : 'Lütfen yeni bir konu seçin veya oluşturun.';
-                englishColumn.innerHTML = `<div class="text-block text-center text-xl font-medium">${message}</div>`;
-                turkishColumn.innerHTML = `<div class="text-block text-center text-xl font-medium">${message}</div>`;
-                pageCounter.innerText = "0 / 0";
-                prevButton.disabled = true;
-                nextButton.disabled = true;
-            }
-        }
-        
-        // Metni HTML paragraf formatına dönüştürür (Başlık ve Metin ayırımı)
-        function formatTextForHTML(text) {
-            const lines = text.split('\n').filter(line => line.trim() !== '');
-            let htmlContent = '';
-            
-            lines.forEach(line => {
-                const trimmedLine = line.trim();
-                if (trimmedLine.length < 50 && trimmedLine === trimmedLine.toUpperCase() && trimmedLine.includes('.')) {
-                    // Başlık (BÖLÜM I, YAZAR ADI vb.)
-                    htmlContent += `<div class="chapter-title">${trimmedLine}</div>`;
-                } else {
-                    // Metin bloğu
-                    htmlContent += `<div class="text-block">${trimmedLine.replace(/\n/g, '<br>')}</div>`;
-                }
-            });
-            return htmlContent;
-        }
-
-        // --- KULLANICI ETKİLEŞİM FONKSİYONLARI ---
-
-        window.toggleSidebar = function(show) {
-            const sidebar = document.getElementById('sidebar');
-            const backdrop = document.getElementById('sidebar-backdrop');
-            window.state.isSidebarOpen = show;
-            
-            if (show) {
-                sidebar.classList.remove('-translate-x-full');
-                backdrop.classList.remove('hidden');
-            } else {
-                sidebar.classList.add('-translate-x-full');
-                backdrop.classList.add('hidden');
-            }
-        }
-
-        window.toggleDarkMode = function() {
-            window.state.isDarkMode = !window.state.isDarkMode;
-            if (window.state.isDarkMode) {
-                document.documentElement.classList.add('dark');
-                localStorage.theme = 'dark';
-            } else {
-                document.documentElement.classList.remove('dark');
-                localStorage.theme = 'light';
-            }
-            renderDarkModeButton();
-        }
-
-        function renderDarkModeButton() {
-             const darkButton = document.getElementById('dark-mode-toggle');
-             darkButton.innerHTML = window.state.isDarkMode 
-                 ? `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg> Gündüz Modu`
-                 : `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg> Gece Modu`;
-        }
-
-        window.promptNewTopic = function() {
-            const newName = prompt("Lütfen yeni konu/kitap için bir isim girin (Örn: Sherlock Bölüm 2):");
-            if (newName && newName.trim()) {
-                createNewTopic(newName.trim());
-            }
-        }
-
-        window.navigatePage = function(direction) {
-            const newIndex = window.state.currentPageIndex + direction;
-            if (newIndex >= 0 && newIndex < window.state.pages.length) {
-                window.state.currentPageIndex = newIndex;
-                renderPage();
-            }
-        };
-
-        window.toggleTranslator = function(show) {
-            const translatorModal = document.getElementById('translator-modal');
-            const englishInput = document.getElementById('english-input');
-            const turkishOutput = document.getElementById('turkish-output');
-            
-            translatorModal.style.display = show ? 'flex' : 'none';
-            if (show) {
-                englishInput.value = '';
-                turkishOutput.innerText = 'Çeviri sonucu burada görünecek.';
-                englishInput.focus();
-            }
-        }
-
-        // --- ÇEVİRİ VE KAYIT (GEMINI API) ---
-        
-        window.translateAndSave = async function() {
-            const userQuery = document.getElementById('english-input').value.trim();
-            if (!userQuery) {
-                document.getElementById('turkish-output').innerText = 'Lütfen çevirmek istediğiniz İngilizce metni girin.';
-                return;
-            }
-            if (!window.state.currentTopicId) {
-                document.getElementById('turkish-output').innerText = 'Lütfen önce bir konu seçin veya oluşturun.';
-                return;
-            }
-
-            const translateButton = document.getElementById('translate-button');
-            const buttonText = document.getElementById('button-text');
-            const loadingSpinner = document.getElementById('loading-spinner');
-            const turkishOutput = document.getElementById('turkish-output');
-
-            translateButton.disabled = true;
-            buttonText.classList.add('hidden');
-            loadingSpinner.classList.remove('hidden');
-            turkishOutput.innerText = 'Çeviri yapılıyor... Lütfen bekleyin.';
-            turkishOutput.classList.remove('bg-green-50', 'border-green-300');
-            turkishOutput.classList.add('bg-yellow-50', 'border-yellow-300');
-
-
-            // Gemini API Çağrısı
-            const apiKey = ""; 
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-            
-            const systemPrompt = "You are a professional translator specializing in English-to-Turkish translation. Provide only the Turkish translation, ensuring it is natural, grammatically correct, and preserves the original meaning and tone.";
-
-            const payload = {
-                contents: [{ parts: [{ text: userQuery }] }],
-                systemInstruction: { parts: [{ text: systemPrompt }] },
-            };
-
-            const maxRetries = 5;
-            let attempt = 0;
-            let translatedText = null;
-
-            while (attempt < maxRetries && translatedText === null) {
-                attempt++;
-                try {
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-
-                    if (response.ok) {
-                        const result = await response.json();
-                        const candidate = result.candidates?.[0];
-                        if (candidate && candidate.content?.parts?.[0]?.text) {
-                            translatedText = candidate.content.parts[0].text;
-                        } 
-                    } else {
-                        console.error(`API İstek Hatası (Durum: ${response.status}):`, await response.text());
-                    }
-                } catch (error) {
-                    console.error("Fetch Hatası:", error);
-                }
-
-                if (translatedText === null && attempt < maxRetries) {
-                    const delay = Math.pow(2, attempt) * 1000 + (Math.random() * 500);
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                }
-            }
-            
-            // Eğer çeviri başarısız olursa hata mesajı göster
-            if (translatedText === null) {
-                translatedText = "Çeviri alınamadı. Lütfen internet bağlantınızı kontrol edin veya daha sonra tekrar deneyin.";
-            }
-
-            // Çeviri sonucunu göster
-            turkishOutput.innerText = translatedText;
-            turkishOutput.classList.remove('bg-yellow-50', 'border-yellow-300');
-            turkishOutput.classList.add('bg-green-50', 'border-green-300');
-
-            // Çeviri başarılıysa Firestore'a kaydet
-            if (translatedText !== "Çeviri alınamadı. Lütfen internet bağlantınızı kontrol edin veya daha sonra tekrar deneyin." && window.state.isAuthReady) {
-                const pagesRef = getPagesCollectionRef(window.state.currentTopicId);
-                if (pagesRef) {
-                    try {
-                        const newPageData = {
-                            englishText: userQuery,
-                            turkishText: translatedText,
-                            timestamp: new Date().getTime() 
-                        };
-                        await addDoc(pagesRef, newPageData);
-                        console.log("Firestore: Yeni sayfa başarıyla eklendi.");
-                        
-                        setTimeout(() => {
-                            toggleTranslator(false);
-                        }, 500); 
-
-                    } catch (e) {
-                        console.error("Firestore'a kaydederken hata:", e);
-                        turkishOutput.innerText += "\n\n(HATA: Kayıt yapılırken bir sorun oluştu.)";
-                    }
-                } else {
-                    turkishOutput.innerText += "\n\n(HATA: Veritabanı bağlantısı hazır değil veya Konu ID'si yok.)";
-                }
-            }
-
-            // UI'ı normal duruma getir
-            translateButton.disabled = false;
-            buttonText.classList.remove('hidden');
-            loadingSpinner.classList.add('hidden');
-        }
-
-        window.onload = function() {
-            setupFirebase();
-            renderDarkModeButton();
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape' && window.state.isSidebarOpen) {
-                    toggleSidebar(false);
-                }
-            });
-        };
-
-    </script>
-
-    <!-- Stil Tanımları -->
+    
+    <!-- Tailwind için Özel Renk Konfigürasyonu -->
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
-        :root {
-            --bg-light: #f7f7f7;
-            --bg-dark: #121212;
-            --card-light: #ffffff;
-            --card-dark: #1e1e1e;
-            --text-light: #1f2937;
-            --text-dark: #e5e7eb;
-            --border-light: #e5e7eb;
-            --border-dark: #374151;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-light);
-            color: var(--text-light);
-            transition: background-color 0.3s, color 0.3s;
-        }
-        .dark body {
-            background-color: var(--bg-dark);
-            color: var(--text-dark);
-        }
-
-        .text-column {
-            background-color: var(--card-light);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            transition: background-color 0.3s, border-color 0.3s, color 0.3s;
-        }
-        .dark .text-column {
-            background-color: var(--card-dark);
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
-        }
-        
-        .english { border-right: 1px solid var(--border-light); }
-        .dark .english { border-right: 1px solid var(--border-dark); }
-        .turkish { background-color: #eff6ff; }
-        .dark .turkish { background-color: #374151; }
-
-        .text-column {
-            flex: 1;
-            padding: 1rem;
-            border-radius: 0.75rem;
-            overflow-y: scroll; 
-            height: 100%;
-            white-space: pre-wrap; 
-        }
-
-        #container {
-            display: flex;
-            overflow-x: hidden;
-            height: calc(100vh - 140px);
-            padding: 0 1rem;
-            margin-top: 2rem;
-        }
-
-        .text-block {
-            margin-bottom: 1.5rem;
-            line-height: 1.7;
-            text-align: justify;
-        }
-        .chapter-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin-bottom: 1rem;
-            color: #1e40af;
-            border-bottom: 2px solid #60a5fa;
-            padding-bottom: 0.5rem;
-        }
-        .dark .chapter-title {
-            color: #93c5fd;
-            border-bottom-color: #3b82f6;
-        }
-        
-        /* Mobil düzenleme */
-        @media (max-width: 768px) {
-            #container {
-                flex-direction: column;
-                height: auto;
-                overflow-x: auto;
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'olive-grove': '#556B2F', // Koyu zeytin yeşili
+                        'dusty-oat': '#F3EAD3',  // Açık yulaf beji
+                        'olive-dark': '#455727', // Daha koyu yeşil (hover için)
+                        'oat-light': '#FAF7F0',  // Kartlar için çok açık bej
+                        'text-dark': '#3a3a3a'   // Ana metin rengi
+                    },
+                    fontFamily: {
+                        'sans': ['Inter', 'sans-serif'] // Okunabilir bir font
+                    }
+                }
             }
-            .text-column {
-                height: 45vh; 
-                margin-bottom: 1rem;
-            }
-            .english { border-right: none; border-bottom: 1px solid var(--border-light); }
-            .dark .english { border-bottom: 1px solid var(--border-dark); }
-        }
-
-        /* Sidebar stilleri */
-        #sidebar {
-            width: 280px;
-            z-index: 100;
-            top: 0;
-            left: 0;
-            background-color: var(--card-light);
-            border-right: 1px solid var(--border-light);
-            transition: transform 0.3s ease-out;
-        }
-        .dark #sidebar {
-            background-color: var(--card-dark);
-            border-right: 1px solid var(--border-dark);
         }
     </style>
+    
+    <!-- Google Fonts - Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome İkonları (Sil butonu için) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
-<body class="pb-20">
+<body class="bg-dusty-oat font-sans text-text-dark min-h-screen">
 
-    <!-- Sidebar (Sol Menü) -->
-    <div id="sidebar-backdrop" onclick="toggleSidebar(false)" class="fixed inset-0 bg-black opacity-50 z-50 hidden"></div>
-    <div id="sidebar" class="fixed h-full p-5 -translate-x-full shadow-2xl">
-        <h3 class="text-xl font-bold mb-4 text-blue-700 dark:text-blue-400 border-b pb-2 border-gray-200 dark:border-gray-700">Kitap & Konu Yönetimi</h3>
-        
-        <!-- Dark Mode Toggle -->
-        <button id="dark-mode-toggle" onclick="toggleDarkMode()" class="flex items-center space-x-2 w-full p-3 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 mb-4 transition duration-200">
-            <!-- SVG içeriği JS tarafından doldurulacak -->
-        </button>
-
-        <!-- Yeni Konu Yarat -->
-        <button onclick="promptNewTopic()" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-3 rounded-lg shadow-md mb-4 transition duration-200">
-            + Yeni Konu Yarat
-        </button>
-
-        <h4 class="font-bold text-gray-500 dark:text-gray-400 mt-6 mb-2">Konu Listesi:</h4>
-        
-        <!-- Konu Listesi -->
-        <div id="topic-list" class="space-y-2 max-h-96 overflow-y-auto">
-            <!-- Konu butonları JS ile doldurulacak -->
-            <p class="text-sm text-gray-400">Yükleniyor...</p>
+    <!-- Header -->
+    <header class="bg-olive-grove text-oat-light p-4 shadow-lg sticky top-0 z-10">
+        <div class="container mx-auto max-w-5xl flex justify-between items-center">
+            <h1 class="text-3xl font-bold">FitPlan</h1>
+            <!-- Kullanıcı ID alanı kaldırıldı -->
         </div>
-
-    </div>
+    </header>
 
     <!-- Ana İçerik -->
-    <div class="max-w-6xl mx-auto">
-        <header class="flex justify-between items-center mb-4">
-            <button onclick="toggleSidebar(true)" class="text-3xl p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-800 transition duration-200" aria-label="Menü Aç">
-                &#9776;
-            </button>
-            <h1 class="text-2xl sm:text-3xl font-extrabold text-center text-gray-800 dark:text-gray-100">Paralel Okuma Sistemi</h1>
-            <div id="current-topic-name" class="text-sm font-semibold text-blue-700 dark:text-blue-300 p-2 rounded-lg bg-blue-50 dark:bg-gray-700 max-w-xs truncate">Yükleniyor...</div>
-        </header>
-    </div>
+    <main class="container mx-auto max-w-5xl p-4 sm:p-6">
 
-    <!-- Navigasyon Çubuğu -->
-    <div id="navigation-bar" class="max-w-6xl mx-auto flex flex-col sm:flex-row justify-center items-center space-y-2 sm:space-y-0 sm:space-x-4 mb-8 p-3 bg-white dark:bg-gray-800 rounded-lg shadow">
-        <span id="topic-nav-header" class="text-base font-bold text-gray-600 dark:text-gray-400 w-full sm:w-auto text-center">YÜKLENİYOR...</span>
-        <div class="flex items-center space-x-4">
-            <button id="prev-button" onclick="navigatePage(-1)" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg flex items-center" disabled>
-                &#9664; Önceki
-            </button>
-            <span id="page-counter" class="text-lg font-bold text-blue-700 dark:text-blue-300 w-20 text-center">
-                0 / 0
-            </span>
-            <button id="next-button" onclick="navigatePage(1)" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg flex items-center" disabled>
-                Sonraki &#9654;
-            </button>
-        </div>
-    </div>
+        <!-- Gün Sekmeleri -->
+        <nav class="flex flex-wrap justify-center -mb-px space-x-1" id="day-tabs">
+            <button data-day="pazartesi" class="day-tab-btn py-3 px-5 text-lg font-semibold rounded-t-lg transition-colors duration-300">Pazartesi</button>
+            <button data-day="sali" class="day-tab-btn py-3 px-5 text-lg font-semibold rounded-t-lg transition-colors duration-300">Salı</button>
+            <button data-day="carsamba" class="day-tab-btn py-3 px-5 text-lg font-semibold rounded-t-lg transition-colors duration-300">Çarşamba</button>
+            <button data-day="persembe" class="day-tab-btn py-3 px-5 text-lg font-semibold rounded-t-lg transition-colors duration-300">Perşembe</button>
+            <button data-day="cuma" class="day-tab-btn py-3 px-5 text-lg font-semibold rounded-t-lg transition-colors duration-300">Cuma</button>
+            <button data-day="cumartesi" class="day-tab-btn py-3 px-5 text-lg font-semibold rounded-t-lg transition-colors duration-300">Cumartesi</button>
+            <button data-day="pazar" class="day-tab-btn py-3 px-5 text-lg font-semibold rounded-t-lg transition-colors duration-300">Pazar</button>
+        </nav>
 
-    <!-- Metin Sütunları İçin Ana Konteyner -->
-    <div id="container" class="max-w-7xl mx-auto">
-
-        <!-- İngilizce Metin Sütunu -->
-        <div id="english-column" class="text-column english text-gray-700 dark:text-gray-300">
-            Uygulama başlatılıyor...
-        </div>
-
-        <!-- Türkçe Metin Sütunu -->
-        <div id="turkish-column" class="text-column turkish text-gray-700 dark:text-gray-300">
-            Uygulama başlatılıyor...
-        </div>
-    </div>
-    
-    <!-- Çeviri Modalı (Yeni Sayfa Ekleme Ekranı) -->
-    <div id="translator-modal" onclick="toggleTranslator(false)">
-        <div id="translator-content" onclick="event.stopPropagation()" class="flex flex-col space-y-4 dark:bg-gray-800">
-            <h2 class="text-2xl font-bold text-blue-700 dark:text-blue-400">Yeni Sayfa Ekle ve Çevir</h2>
-            <p class="text-sm text-gray-600 dark:text-gray-400">Mevcut konuya yeni sayfa eklemek için İngilizce metni yapıştırın.</p>
+        <!-- İçerik Kartı -->
+        <div class="bg-oat-light p-6 sm:p-8 rounded-b-lg rounded-tr-lg shadow-xl w-full">
             
-            <!-- İngilizce Girişi -->
-            <label for="english-input" class="font-semibold text-gray-700 dark:text-gray-300">İngilizce Metni Buraya Yapıştırın:</label>
-            <textarea id="english-input" rows="6" class="p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 transition duration-150 dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="İngilizce metninizi girin..."></textarea>
-            
-            <!-- Çeviri Butonu ve Yükleme Göstergesi -->
-            <button id="translate-button" onclick="translateAndSave()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-150 ease-in-out disabled:opacity-50">
-                <span id="button-text">Çevir & Yeni Sayfa Olarak Kaydet</span>
-                <div id="loading-spinner" class="hidden animate-spin rounded-full h-6 w-6 border-b-2 border-white mx-auto"></div>
-            </button>
-            
-            <!-- Türkçe Çeviri Sonucu -->
-            <label for="turkish-output" class="font-semibold text-gray-700 dark:text-gray-300 mt-4">Türkçe Çeviri Sonucu:</label>
-            <div id="turkish-output" class="min-h-[100px] p-3 border-2 border-green-300 bg-green-50 rounded-lg text-gray-800 whitespace-pre-wrap dark:bg-gray-700 dark:border-green-600 dark:text-gray-200">
-                Çeviri sonucu burada görünecek.
+            <!-- Yüklenme Göstergesi Kaldırıldı -->
+
+            <!-- Ana İçerik Alanı (Artık varsayılan olarak görünür) -->
+            <div id="main-content">
+                <!-- Günün Motivatörü -->
+                <div>
+                    <h2 class="text-2xl font-bold text-olive-grove mb-3">Günün Motivatörü</h2>
+                    <textarea id="motivation-quote" 
+                              rows="3" 
+                              class="w-full p-3 bg-white border border-olive-grove/30 rounded-lg shadow-inner focus:ring-2 focus:ring-olive-grove focus:outline-none transition-all"
+                              placeholder="Bugün seni ne motive ediyor? Buraya yaz..."></textarea>
+                    <button id="save-motivation" class="mt-2 py-2 px-4 bg-olive-grove text-oat-light rounded-lg font-semibold shadow-md hover:bg-olive-dark transition-all">
+                        Sözü Kaydet
+                    </button>
+                </div>
+
+                <hr class="my-6 sm:my-8 border-t border-olive-grove/20">
+
+                <!-- Egzersiz Alanı -->
+                <div>
+                    <h2 class="text-2xl font-bold text-olive-grove mb-4">Günün Egzersizleri</h2>
+                    
+                    <!-- Egzersiz Ekleme Formu -->
+                    <form id="add-exercise-form" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end p-4 bg-white rounded-lg shadow-md mb-6">
+                        <div class="col-span-1 md:col-span-2">
+                            <label for="exercise-name" class="block text-sm font-medium text-text-dark">Egzersiz Adı</label>
+                            <input type="text" id="exercise-name" required class="mt-1 w-full p-2 border border-olive-grove/30 rounded-lg focus:ring-2 focus:ring-olive-grove focus:outline-none">
+                        </div>
+                        <div>
+                            <label for="exercise-sets" class="block text-sm font-medium text-text-dark">Set</label>
+                            <input type="number" id="exercise-sets" min="1" required class="mt-1 w-full p-2 border border-olive-grove/30 rounded-lg focus:ring-2 focus:ring-olive-grove focus:outline-none">
+                        </div>
+                        <div>
+                            <label for="exercise-reps" class="block text-sm font-medium text-text-dark">Tekrar</label>
+                            <input type="text" id="exercise-reps" placeholder="örn: 12-10-8" required class="mt-1 w-full p-2 border border-olive-grove/30 rounded-lg focus:ring-2 focus:ring-olive-grove focus:outline-none">
+                        </div>
+                        <button type="submit" class="md:col-start-4 py-2 px-4 bg-olive-grove text-oat-light rounded-lg font-semibold shadow-md hover:bg-olive-dark transition-all h-10">
+                            <i class="fas fa-plus mr-2"></i>Ekle
+                        </button>
+                    </form>
+
+                    <!-- Egzersiz Listesi -->
+                    <div id="exercise-list" class="space-y-3">
+                        <!-- Egzersizler buraya dinamik olarak eklenecek -->
+                        <!-- Örnek:
+                        <div class="flex justify-between items-center p-4 bg-white rounded-lg shadow-sm">
+                            <div>
+                                <h3 class="font-bold text-lg">Bench Press</h3>
+                                <p class="text-sm text-text-dark">4 Set / 12-10-8-8 Tekrar</p>
+                            </div>
+                            <button class="delete-exercise-btn text-red-500 hover:text-red-700 transition-colors">
+                                <i class="fas fa-trash-alt fa-lg"></i>
+                            </button>
+                        </div>
+                        -->
+                    </div>
+                </div>
             </div>
-
-            <!-- Kapat Butonu -->
-            <button onclick="toggleTranslator(false)" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg mt-4 transition duration-150 ease-in-out">
-                Kapat
-            </button>
         </div>
-    </div>
+    </main>
 
-    <!-- "+" Butonu (Yeni Sayfa Ekle) -->
-    <button onclick="toggleTranslator(true)" class="fixed bottom-8 right-8 bg-blue-600 hover:bg-blue-700 text-white p-5 rounded-full shadow-xl text-3xl font-bold transition duration-300 ease-in-out transform hover:scale-110 z-40" aria-label="Yeni Sayfa Ekle">
-        +
-    </button>
+    <!-- Firebase SDK'ları yerine localStorage kullanılacak (Script'i güncelliyoruz) -->
+    <script type="module">
+        // --- GLOBAL DEĞİŞKENLER ---
+        
+        // Firebase ile ilgili değişkenler kaldırıldı
+        let currentDay = 'pazartesi'; // Başlangıç günü
+        
+        // --- UI ELEMENTLERİ ---
+        const dayTabsContainer = document.getElementById('day-tabs');
+        const motivationQuoteEl = document.getElementById('motivation-quote');
+        const saveMotivationBtn = document.getElementById('save-motivation');
+        const addExerciseForm = document.getElementById('add-exercise-form');
+        const exerciseListEl = document.getElementById('exercise-list');
+        // userIdDisplay, loadingSpinner ve mainContent (gizleme mantığı) kaldırıldı
+
+        // --- UYGULAMA MANTIĞI ---
+
+        /**
+         * Belirtilen gün için localStorage'dan veriyi çeker.
+         */
+        function getDayData(day) {
+            const key = `fitPlan_${day}`;
+            const dataStr = localStorage.getItem(key);
+            // Veri yoksa veya bozuksa, varsayılan boş bir yapı döndür
+            try {
+                const parsedData = JSON.parse(dataStr);
+                return parsedData || { motivationQuote: '', exercises: [] };
+            } catch (e) {
+                return { motivationQuote: '', exercises: [] };
+            }
+        }
+
+        /**
+         * Belirtilen gün için veriyi localStorage'a kaydeder.
+         */
+        function saveDayData(day, data) {
+            const key = `fitPlan_${day}`;
+            localStorage.setItem(key, JSON.stringify(data));
+        }
+
+        /**
+         * Belirli bir günün verilerini localStorage'dan yükler ve UI'ı günceller.
+         */
+        function loadDataForDay(day) {
+            // onSnapshot veya yüklenme mantığı artık yok
+            
+            const data = getDayData(day);
+                
+            // Motivasyon sözünü güncelle
+            motivationQuoteEl.value = data.motivationQuote;
+            
+            // Egzersiz listesini render et
+            renderExercises(data.exercises);
+        }
+
+        /**
+         * Egzersiz dizisini alıp HTML listesi olarak ekrana basar.
+         */
+        function renderExercises(exercises = []) {
+            exerciseListEl.innerHTML = ''; // Listeyi temizle
+            if (exercises.length === 0) {
+                exerciseListEl.innerHTML = '<p class="text-center text-gray-500 italic">Bugün için henüz egzersiz eklenmemiş.</p>';
+                return;
+            }
+
+            exercises.forEach((ex, index) => {
+                const exerciseItem = document.createElement('div');
+                exerciseItem.className = 'flex justify-between items-center p-4 bg-white rounded-lg shadow-sm'; // 'animate-fade-in' kaldırıldı (CSS'te tanımlı değilse)
+                exerciseItem.innerHTML = `
+                    <div>
+                        <h3 class="font-bold text-lg text-olive-grove">${ex.name}</h3>
+                        <p class="text-sm text-text-dark">${ex.sets} Set / ${ex.reps} Tekrar</p>
+                    </div>
+                    <button class="delete-exercise-btn text-red-500 hover:text-red-700 transition-colors" data-index="${index}" aria-label="Egzersizi Sil">
+                        <i class="fas fa-trash-alt fa-lg"></i>
+                    </button>
+                `;
+                exerciseListEl.appendChild(exerciseItem);
+            });
+        }
+        
+        /**
+         * Gün sekmesine tıklandığında çalışır. (Bu fonksiyon eksikti)
+         */
+        function handleTabClick(e) {
+            const clickedTab = e.target.closest('.day-tab-btn');
+            if (!clickedTab) return;
+
+            const day = clickedTab.dataset.day;
+            if (day === currentDay) return; // Zaten bu gündeyiz
+
+            currentDay = day;
+            updateActiveTab();
+            loadDataForDay(day);
+        }
+
+        /**
+         * Aktif gün sekmesinin UI'ını günceller. (Bu fonksiyon eksikti)
+         */
+        function updateActiveTab() {
+            document.querySelectorAll('.day-tab-btn').forEach(tab => {
+                if (tab.dataset.day === currentDay) {
+                    tab.classList.add('bg-oat-light', 'text-olive-grove');
+                    tab.classList.remove('text-oat-light', 'opacity-70');
+                } else {
+                    tab.classList.remove('bg-oat-light', 'text-olive-grove');
+                    tab.classList.add('text-oat-light', 'opacity-70', 'hover:opacity-100');
+                }
+            });
+        }
+
+        /**
+         * Motivasyon sözünü kaydeder.
+         */
+        async function saveMotivation() {
+            const quote = motivationQuoteEl.value;
+            
+            try {
+                // Mevcut veriyi al, motivasyonu güncelle ve kaydet
+                const data = getDayData(currentDay);
+                data.motivationQuote = quote;
+                saveDayData(currentDay, data);
+                
+                showCustomMessage("Motivasyon sözü kaydedildi!", "success");
+            } catch (error) {
+                console.error("Motivasyon sözü kaydedilirken hata: ", error);
+                showCustomMessage("Hata: Söz kaydedilemedi.");
+            }
+        }
+
+        /**
+         * Yeni egzersiz ekleme formunu yönetir.
+         */
+        async function handleAddExercise(e) {
+            e.preventDefault();
+            const exName = document.getElementById('exercise-name').value;
+            const exSets = document.getElementById('exercise-sets').value;
+            const exReps = document.getElementById('exercise-reps').value;
+
+            if (!exName || !exSets || !exReps) return;
+
+            const newExercise = {
+                name: exName,
+                sets: exSets,
+                reps: exReps
+            };
+
+            try {
+                // Mevcut veriyi al
+                const data = getDayData(currentDay);
+                
+                // Yeni egzersizi mevcut diziye ekle
+                data.exercises.push(newExercise);
+                
+                // Veriyi localStorage'a geri kaydet
+                saveDayData(currentDay, data);
+                
+                // UI'ı manuel olarak güncelle (onSnapshot yok)
+                renderExercises(data.exercises);
+                
+                addExerciseForm.reset(); // Formu temizle
+            } catch (error) {
+                console.error("Egzersiz eklenirken hata: ", error);
+                showCustomMessage("Hata: Egzersiz eklenemedi.");
+            }
+        }
+
+        /**
+         * Egzersiz listesindeki silme butonu tıklamalarını yönetir.
+         */
+        async function handleListClick(e) {
+            const deleteBtn = e.target.closest('.delete-exercise-btn');
+            if (!deleteBtn) return;
+
+            const indexToDelete = parseInt(deleteBtn.dataset.index);
+
+            try {
+                const data = getDayData(currentDay);
+
+                if (!data || !data.exercises) return;
+
+                // İstenen indeksi çıkararak yeni bir dizi oluştur
+                const updatedExercises = data.exercises.filter((_, i) => i !== indexToDelete);
+                
+                // Veriyi güncelle
+                data.exercises = updatedExercises;
+                
+                // localStorage'a kaydet
+                saveDayData(currentDay, data);
+
+                // UI'ı manuel olarak güncelle
+                renderExercises(updatedExercises);
+                
+            } catch (error) {
+                console.error("Egzersiz silinirken hata: ", error);
+                showCustomMessage("Hata: Egzersiz silinemedi.");
+            }
+        }
+
+        /**
+         * Ekranda geçici bir bildirim mesajı gösterir. (Bu fonksiyon eksikti)
+         */
+        function showCustomMessage(message, type = "error") {
+            const msgBox = document.createElement('div');
+            msgBox.textContent = message;
+            msgBox.className = `fixed bottom-5 right-5 p-4 rounded-lg shadow-xl text-white ${type === 'success' ? 'bg-green-600' : 'bg-red-600'}`;
+            document.body.appendChild(msgBox);
+            setTimeout(() => {
+                msgBox.remove();
+            }, 3000);
+        }
+
+        /**
+         * Firebase Authentication işlemi kaldırıldı.
+         */
+
+        // --- BAŞLANGIÇ ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Firebase ile ilgili tüm kodlar kaldırıldı
+            
+            // UI event listener'larını ayarla
+            dayTabsContainer.addEventListener('click', handleTabClick);
+            saveMotivationBtn.addEventListener('click', saveMotivation);
+            addExerciseForm.addEventListener('submit', handleAddExercise);
+            exerciseListEl.addEventListener('click', handleListClick);
+
+            // Başlangıç gününü yükle
+            updateActiveTab();
+            loadDataForDay(currentDay);
+        });
+
+    </script>
 </body>
 </html>
-
