@@ -3,357 +3,364 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FitPlan - Kişisel Fitness Planlayıcı</title>
-    
-    <!-- Tailwind CSS CDN -->
+    <title>Yerel Depolamalı Fotoğraf Galerisi</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Tailwind için Özel Renk Konfigürasyonu -->
     <style>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'olive-grove': '#556B2F', // Koyu zeytin yeşili
-                        'dusty-oat': '#F3EAD3',  // Açık yulaf beji
-                        'olive-dark': '#455727', // Daha koyu yeşil (hover için)
-                        'oat-light': '#FAF7F0',  // Kartlar için çok açık bej
-                        'text-dark': '#3a3a3a'   // Ana metin rengi
-                    },
-                    fontFamily: {
-                        'sans': ['Inter', 'sans-serif'] // Okunabilir bir font
-                    }
-                }
-            }
+        /* Tailwind'e ek olarak özel stiller */
+        .image-card {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .image-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .drag-area {
+            min-height: 150px;
+            cursor: pointer;
         }
     </style>
-    
-    <!-- Google Fonts - Inter -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Font Awesome İkonları (Sil butonu için) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
-<body class="bg-dusty-oat font-sans text-text-dark min-h-screen">
+<body class="bg-gray-100 min-h-screen p-4 sm:p-8 font-sans">
 
-    <!-- Header -->
-    <header class="bg-olive-grove text-oat-light p-4 shadow-lg sticky top-0 z-10">
-        <div class="container mx-auto max-w-5xl flex justify-between items-center">
-            <h1 class="text-3xl font-bold">FitPlan</h1>
-            <!-- Kullanıcı ID alanı kaldırıldı -->
-        </div>
+    <!-- Sinyal (Alert) Konteyneri -->
+    <div id="alert-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+    <header class="text-center mb-10">
+        <h1 class="text-4xl font-extrabold text-teal-700 mb-2">Yerel Fotoğraf Galerisi (LocalStorage)</h1>
+        <p class="text-gray-600 text-lg">
+            Görseller tarayıcınızın LocalStorage'ında saklanacaktır.
+        </p>
+        <p class="text-sm text-red-500 font-semibold mt-2">
+            UYARI: LocalStorage kapasitesi sınırlıdır (5-10MB). Büyük dosyalar performansı düşürür ve depolama limitini hızla doldurur.
+        </p>
     </header>
 
-    <!-- Ana İçerik -->
-    <main class="container mx-auto max-w-5xl p-4 sm:p-6">
+    <!-- Yükleme Alanı -->
+    <section class="max-w-4xl mx-auto mb-12 p-6 bg-white rounded-xl shadow-2xl border border-gray-100">
+        <h2 class="text-2xl font-semibold text-gray-800 mb-6 border-b pb-3">1. Yeni Fotoğraf Ekle</h2>
+        
+        <div id="drop-area" 
+             class="drag-area flex flex-col items-center justify-center p-10 border-4 border-dashed rounded-xl transition duration-200 border-gray-300 hover:border-teal-400 hover:bg-teal-50"
+             onclick="document.getElementById('file-input').click()">
 
-        <!-- Gün Sekmeleri -->
-        <nav class="flex flex-wrap justify-center -mb-px space-x-1" id="day-tabs">
-            <button data-day="pazartesi" class="day-tab-btn py-3 px-5 text-lg font-semibold rounded-t-lg transition-colors duration-300">Pazartesi</button>
-            <button data-day="sali" class="day-tab-btn py-3 px-5 text-lg font-semibold rounded-t-lg transition-colors duration-300">Salı</button>
-            <button data-day="carsamba" class="day-tab-btn py-3 px-5 text-lg font-semibold rounded-t-lg transition-colors duration-300">Çarşamba</button>
-            <button data-day="persembe" class="day-tab-btn py-3 px-5 text-lg font-semibold rounded-t-lg transition-colors duration-300">Perşembe</button>
-            <button data-day="cuma" class="day-tab-btn py-3 px-5 text-lg font-semibold rounded-t-lg transition-colors duration-300">Cuma</button>
-            <button data-day="cumartesi" class="day-tab-btn py-3 px-5 text-lg font-semibold rounded-t-lg transition-colors duration-300">Cumartesi</button>
-            <button data-day="pazar" class="day-tab-btn py-3 px-5 text-lg font-semibold rounded-t-lg transition-colors duration-300">Pazar</button>
-        </nav>
-
-        <!-- İçerik Kartı -->
-        <div class="bg-oat-light p-6 sm:p-8 rounded-b-lg rounded-tr-lg shadow-xl w-full">
-            
-            <!-- Yüklenme Göstergesi Kaldırıldı -->
-
-            <!-- Ana İçerik Alanı (Artık varsayılan olarak görünür) -->
-            <div id="main-content">
-                <!-- Günün Motivatörü -->
-                <div>
-                    <h2 class="text-2xl font-bold text-olive-grove mb-3">Günün Motivatörü</h2>
-                    <textarea id="motivation-quote" 
-                              rows="3" 
-                              class="w-full p-3 bg-white border border-olive-grove/30 rounded-lg shadow-inner focus:ring-2 focus:ring-olive-grove focus:outline-none transition-all"
-                              placeholder="Bugün seni ne motive ediyor? Buraya yaz..."></textarea>
-                    <button id="save-motivation" class="mt-2 py-2 px-4 bg-olive-grove text-oat-light rounded-lg font-semibold shadow-md hover:bg-olive-dark transition-all">
-                        Sözü Kaydet
-                    </button>
-                </div>
-
-                <hr class="my-6 sm:my-8 border-t border-olive-grove/20">
-
-                <!-- Egzersiz Alanı -->
-                <div>
-                    <h2 class="text-2xl font-bold text-olive-grove mb-4">Günün Egzersizleri</h2>
-                    
-                    <!-- Egzersiz Ekleme Formu -->
-                    <form id="add-exercise-form" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end p-4 bg-white rounded-lg shadow-md mb-6">
-                        <div class="col-span-1 md:col-span-2">
-                            <label for="exercise-name" class="block text-sm font-medium text-text-dark">Egzersiz Adı</label>
-                            <input type="text" id="exercise-name" required class="mt-1 w-full p-2 border border-olive-grove/30 rounded-lg focus:ring-2 focus:ring-olive-grove focus:outline-none">
-                        </div>
-                        <div>
-                            <label for="exercise-sets" class="block text-sm font-medium text-text-dark">Set</label>
-                            <input type="number" id="exercise-sets" min="1" required class="mt-1 w-full p-2 border border-olive-grove/30 rounded-lg focus:ring-2 focus:ring-olive-grove focus:outline-none">
-                        </div>
-                        <div>
-                            <label for="exercise-reps" class="block text-sm font-medium text-text-dark">Tekrar</label>
-                            <input type="text" id="exercise-reps" placeholder="örn: 12-10-8" required class="mt-1 w-full p-2 border border-olive-grove/30 rounded-lg focus:ring-2 focus:ring-olive-grove focus:outline-none">
-                        </div>
-                        <button type="submit" class="md:col-start-4 py-2 px-4 bg-olive-grove text-oat-light rounded-lg font-semibold shadow-md hover:bg-olive-dark transition-all h-10">
-                            <i class="fas fa-plus mr-2"></i>Ekle
-                        </button>
-                    </form>
-
-                    <!-- Egzersiz Listesi -->
-                    <div id="exercise-list" class="space-y-3">
-                        <!-- Egzersizler buraya dinamik olarak eklenecek -->
-                        <!-- Örnek:
-                        <div class="flex justify-between items-center p-4 bg-white rounded-lg shadow-sm">
-                            <div>
-                                <h3 class="font-bold text-lg">Bench Press</h3>
-                                <p class="text-sm text-text-dark">4 Set / 12-10-8-8 Tekrar</p>
-                            </div>
-                            <button class="delete-exercise-btn text-red-500 hover:text-red-700 transition-colors">
-                                <i class="fas fa-trash-alt fa-lg"></i>
-                            </button>
-                        </div>
-                        -->
-                    </div>
-                </div>
-            </div>
+            <svg class="w-12 h-12 text-teal-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+            <p class="text-teal-600 font-medium transition duration-150">
+                Dosya Seçmek için Tıklayın veya Buraya Sürükleyip Bırakın
+            </p>
+            <p id="file-name" class="mt-2 text-sm text-gray-500"></p>
         </div>
-    </main>
 
-    <!-- Firebase SDK'ları yerine localStorage kullanılacak (Script'i güncelliyoruz) -->
-    <script type="module">
-        // --- GLOBAL DEĞİŞKENLER ---
-        
-        // Firebase ile ilgili değişkenler kaldırıldı
-        let currentDay = 'pazartesi'; // Başlangıç günü
-        
-        // --- UI ELEMENTLERİ ---
-        const dayTabsContainer = document.getElementById('day-tabs');
-        const motivationQuoteEl = document.getElementById('motivation-quote');
-        const saveMotivationBtn = document.getElementById('save-motivation');
-        const addExerciseForm = document.getElementById('add-exercise-form');
-        const exerciseListEl = document.getElementById('exercise-list');
-        // userIdDisplay, loadingSpinner ve mainContent (gizleme mantığı) kaldırıldı
+        <input 
+            id="file-input" 
+            type="file" 
+            accept="image/*" 
+            class="hidden" 
+            onchange="handleFileSelect(this.files)"
+        />
 
-        // --- UYGULAMA MANTIĞI ---
+        <div class="mt-6 flex justify-center">
+             <button
+                id="upload-button"
+                onclick="uploadPhoto()"
+                disabled
+                class="px-8 py-3 text-white font-bold rounded-lg transition duration-300 shadow-md bg-teal-300 cursor-not-allowed hover:bg-teal-400 disabled:opacity-50"
+            >
+                Galerime Ekle
+            </button>
+        </div>
+    </section>
+
+    <!-- Galeri Alanı -->
+    <section class="max-w-6xl mx-auto p-6 bg-white rounded-xl shadow-2xl">
+        <h2 class="text-2xl font-semibold text-gray-800 mb-6 border-b pb-3">2. Galeriniz (<span id="photo-count">0</span> Fotoğraf)</h2>
+        <div id="gallery-container" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            <!-- Görseller buraya yüklenecek -->
+        </div>
+    </section>
+
+    <footer class="mt-10 text-center text-gray-400 text-sm">
+        <p>&copy; Yerel Depolama Kullanılarak Hazırlanmıştır.</p>
+    </footer>
+
+    <script>
+        // Global State
+        let selectedFile = null;
+        const STORAGE_KEY = 'local_photo_gallery_items';
+
+        // --- Yardımcı Fonksiyonlar ---
 
         /**
-         * Belirtilen gün için localStorage'dan veriyi çeker.
+         * Basit bir bildirim mesajı (alert) gösterir.
+         * @param {string} message Görüntülenecek mesaj.
+         * @param {string} type 'success', 'error' veya 'info'.
          */
-        function getDayData(day) {
-            const key = `fitPlan_${day}`;
-            const dataStr = localStorage.getItem(key);
-            // Veri yoksa veya bozuksa, varsayılan boş bir yapı döndür
-            try {
-                const parsedData = JSON.parse(dataStr);
-                return parsedData || { motivationQuote: '', exercises: [] };
-            } catch (e) {
-                return { motivationQuote: '', exercises: [] };
+        function showAlert(message, type = 'info') {
+            const container = document.getElementById('alert-container');
+            const id = Date.now();
+            let colorClasses = '';
+
+            switch (type) {
+                case 'error':
+                    colorClasses = 'bg-red-500 text-white';
+                    break;
+                case 'success':
+                    colorClasses = 'bg-green-500 text-white';
+                    break;
+                case 'info':
+                default:
+                    colorClasses = 'bg-blue-500 text-white';
+                    break;
+            }
+
+            const alertDiv = document.createElement('div');
+            alertDiv.id = `alert-${id}`;
+            alertDiv.className = `p-4 rounded-lg shadow-xl flex items-center transition-all duration-300 transform translate-x-full opacity-0 ${colorClasses}`;
+            alertDiv.innerHTML = `
+                <p class="font-semibold mr-4">${message}</p>
+                <button onclick="closeAlert('${id}')" class="p-1 rounded-full hover:bg-opacity-80 transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            `;
+            container.appendChild(alertDiv);
+
+            // Animasyonla içeri kaydır
+            setTimeout(() => {
+                alertDiv.classList.remove('translate-x-full', 'opacity-0');
+            }, 10);
+
+            // Hata değilse 5 saniye sonra otomatik kapat
+            if (type !== 'info') {
+                setTimeout(() => closeAlert(id), 5000);
             }
         }
 
         /**
-         * Belirtilen gün için veriyi localStorage'a kaydeder.
+         * Belirtilen ID'ye sahip bildirimi kapatır.
+         * @param {number} id Kapatılacak bildirimin ID'si.
          */
-        function saveDayData(day, data) {
-            const key = `fitPlan_${day}`;
-            localStorage.setItem(key, JSON.stringify(data));
+        function closeAlert(id) {
+            const alertDiv = document.getElementById(`alert-${id}`);
+            if (alertDiv) {
+                // Kapanma animasyonu
+                alertDiv.classList.add('translate-x-full', 'opacity-0');
+                setTimeout(() => {
+                    alertDiv.remove();
+                }, 300);
+            }
         }
 
         /**
-         * Belirli bir günün verilerini localStorage'dan yükler ve UI'ı günceller.
+         * Dosya girişinden dosya seçimi yapıldığında tetiklenir.
+         * @param {FileList} files Kullanıcının seçtiği dosyalar listesi.
          */
-        function loadDataForDay(day) {
-            // onSnapshot veya yüklenme mantığı artık yok
-            
-            const data = getDayData(day);
-                
-            // Motivasyon sözünü güncelle
-            motivationQuoteEl.value = data.motivationQuote;
-            
-            // Egzersiz listesini render et
-            renderExercises(data.exercises);
+        function handleFileSelect(files) {
+            const file = files[0];
+            const uploadButton = document.getElementById('upload-button');
+            const fileNameDisplay = document.getElementById('file-name');
+
+            if (file && file.type.startsWith('image/')) {
+                selectedFile = file;
+                uploadButton.disabled = false;
+                uploadButton.classList.remove('bg-teal-300', 'cursor-not-allowed', 'disabled:opacity-50');
+                uploadButton.classList.add('bg-teal-600', 'hover:bg-teal-700');
+                fileNameDisplay.textContent = `Seçilen Dosya: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+                showAlert(`Görsel "${file.name}" yüklenebilir.`, 'info');
+            } else {
+                selectedFile = null;
+                uploadButton.disabled = true;
+                uploadButton.classList.add('bg-teal-300', 'cursor-not-allowed', 'disabled:opacity-50');
+                uploadButton.classList.remove('bg-teal-600', 'hover:bg-teal-700');
+                fileNameDisplay.textContent = 'Lütfen bir görsel dosyası (.jpg, .png vb.) seçin.';
+                if (file) {
+                    showAlert('Lütfen sadece görsel dosyası seçin.', 'error');
+                }
+            }
+            // Dosya inputunu sıfırla ki aynı dosyayı tekrar seçebilsin
+            document.getElementById('file-input').value = ''; 
         }
 
         /**
-         * Egzersiz dizisini alıp HTML listesi olarak ekrana basar.
+         * LocalStorage'dan fotoğraf listesini yükler.
+         * @returns {Array} Fotoğraf meta verileri listesi.
          */
-        function renderExercises(exercises = []) {
-            exerciseListEl.innerHTML = ''; // Listeyi temizle
-            if (exercises.length === 0) {
-                exerciseListEl.innerHTML = '<p class="text-center text-gray-500 italic">Bugün için henüz egzersiz eklenmemiş.</p>';
+        function loadPhotos() {
+            try {
+                const json = localStorage.getItem(STORAGE_KEY);
+                return json ? JSON.parse(json) : [];
+            } catch (e) {
+                console.error("LocalStorage yüklenirken hata:", e);
+                showAlert('Yerel depolama verileri yüklenemedi. Bozuk olabilir.', 'error');
+                return [];
+            }
+        }
+
+        /**
+         * LocalStorage'a fotoğraf listesini kaydeder.
+         * @param {Array} photos Kaydedilecek fotoğraf listesi.
+         */
+        function savePhotos(photos) {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(photos));
+            } catch (e) {
+                console.error("LocalStorage'a kaydederken hata:", e);
+                showAlert(`Yerel depolama alanı dolu. Görsel kaydedilemedi. (Hata: ${e.message})`, 'error');
+            }
+        }
+
+        /**
+         * Galeriyi DOM'da günceller.
+         */
+        function renderGallery() {
+            const photos = loadPhotos();
+            const container = document.getElementById('gallery-container');
+            const countSpan = document.getElementById('photo-count');
+
+            container.innerHTML = '';
+            countSpan.textContent = photos.length;
+
+            if (photos.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full text-center p-10 text-gray-500 border border-dashed rounded-lg">
+                        <svg class="w-10 h-10 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.218A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.218A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        <p class="font-medium">Henüz fotoğraf yok. Lütfen bir görsel yükleyin.</p>
+                    </div>
+                `;
                 return;
             }
 
-            exercises.forEach((ex, index) => {
-                const exerciseItem = document.createElement('div');
-                exerciseItem.className = 'flex justify-between items-center p-4 bg-white rounded-lg shadow-sm'; // 'animate-fade-in' kaldırıldı (CSS'te tanımlı değilse)
-                exerciseItem.innerHTML = `
-                    <div>
-                        <h3 class="font-bold text-lg text-olive-grove">${ex.name}</h3>
-                        <p class="text-sm text-text-dark">${ex.sets} Set / ${ex.reps} Tekrar</p>
+            photos.forEach(photo => {
+                const card = document.createElement('div');
+                card.id = `photo-${photo.id}`;
+                card.className = "image-card relative group bg-gray-100 rounded-lg overflow-hidden";
+                card.innerHTML = `
+                    <img 
+                        src="${photo.base64Data}" 
+                        alt="${photo.fileName}" 
+                        class="w-full h-40 object-cover" 
+                        title="${photo.fileName}"
+                        onerror="this.onerror=null;this.src='https://placehold.co/400x400/999999/FFFFFF?text=Base64+Hata'"
+                    />
+                    
+                    <div class="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 space-x-2">
+                        <!-- Sil Butonu -->
+                        <button 
+                            onclick="deletePhoto('${photo.id}')" 
+                            class="p-2 rounded-full bg-red-600 text-white hover:bg-red-700 transition"
+                            title="Sil"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
                     </div>
-                    <button class="delete-exercise-btn text-red-500 hover:text-red-700 transition-colors" data-index="${index}" aria-label="Egzersizi Sil">
-                        <i class="fas fa-trash-alt fa-lg"></i>
-                    </button>
+                    
+                    <div class="p-2 text-center text-sm truncate font-medium text-gray-700" title="${photo.fileName}">
+                        ${photo.fileName}
+                    </div>
                 `;
-                exerciseListEl.appendChild(exerciseItem);
-            });
-        }
-        
-        /**
-         * Gün sekmesine tıklandığında çalışır. (Bu fonksiyon eksikti)
-         */
-        function handleTabClick(e) {
-            const clickedTab = e.target.closest('.day-tab-btn');
-            if (!clickedTab) return;
-
-            const day = clickedTab.dataset.day;
-            if (day === currentDay) return; // Zaten bu gündeyiz
-
-            currentDay = day;
-            updateActiveTab();
-            loadDataForDay(day);
-        }
-
-        /**
-         * Aktif gün sekmesinin UI'ını günceller. (Bu fonksiyon eksikti)
-         */
-        function updateActiveTab() {
-            document.querySelectorAll('.day-tab-btn').forEach(tab => {
-                if (tab.dataset.day === currentDay) {
-                    tab.classList.add('bg-oat-light', 'text-olive-grove');
-                    tab.classList.remove('text-oat-light', 'opacity-70');
-                } else {
-                    tab.classList.remove('bg-oat-light', 'text-olive-grove');
-                    tab.classList.add('text-oat-light', 'opacity-70', 'hover:opacity-100');
-                }
+                container.appendChild(card);
             });
         }
 
         /**
-         * Motivasyon sözünü kaydeder.
+         * Seçilen görseli okur, Base64'e çevirir ve LocalStorage'a kaydeder.
          */
-        async function saveMotivation() {
-            const quote = motivationQuoteEl.value;
-            
-            try {
-                // Mevcut veriyi al, motivasyonu güncelle ve kaydet
-                const data = getDayData(currentDay);
-                data.motivationQuote = quote;
-                saveDayData(currentDay, data);
-                
-                showCustomMessage("Motivasyon sözü kaydedildi!", "success");
-            } catch (error) {
-                console.error("Motivasyon sözü kaydedilirken hata: ", error);
-                showCustomMessage("Hata: Söz kaydedilemedi.");
+        function uploadPhoto() {
+            if (!selectedFile) {
+                showAlert('Lütfen önce bir görsel dosyası seçin.', 'error');
+                return;
             }
-        }
 
-        /**
-         * Yeni egzersiz ekleme formunu yönetir.
-         */
-        async function handleAddExercise(e) {
-            e.preventDefault();
-            const exName = document.getElementById('exercise-name').value;
-            const exSets = document.getElementById('exercise-sets').value;
-            const exReps = document.getElementById('exercise-reps').value;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const base64Data = e.target.result;
+                const photos = loadPhotos();
+                
+                // Yeni fotoğraf objesi
+                const newPhoto = {
+                    id: Date.now().toString(), // Benzersiz ID
+                    fileName: selectedFile.name,
+                    base64Data: base64Data, // LocalStorage'a kaydedilen Base64 veri
+                    size: selectedFile.size,
+                    uploadedAt: new Date().toISOString()
+                };
 
-            if (!exName || !exSets || !exReps) return;
+                photos.unshift(newPhoto); // En yeni görseli başa ekle
 
-            const newExercise = {
-                name: exName,
-                sets: exSets,
-                reps: exReps
+                savePhotos(photos);
+                renderGallery();
+
+                // Yükleme alanını temizle
+                selectedFile = null;
+                document.getElementById('upload-button').disabled = true;
+                document.getElementById('upload-button').classList.remove('bg-teal-600', 'hover:bg-teal-700');
+                document.getElementById('upload-button').classList.add('bg-teal-300', 'cursor-not-allowed', 'disabled:opacity-50');
+                document.getElementById('file-name').textContent = '';
+                showAlert(`"${newPhoto.fileName}" galeriye eklendi.`, 'success');
             };
 
-            try {
-                // Mevcut veriyi al
-                const data = getDayData(currentDay);
-                
-                // Yeni egzersizi mevcut diziye ekle
-                data.exercises.push(newExercise);
-                
-                // Veriyi localStorage'a geri kaydet
-                saveDayData(currentDay, data);
-                
-                // UI'ı manuel olarak güncelle (onSnapshot yok)
-                renderExercises(data.exercises);
-                
-                addExerciseForm.reset(); // Formu temizle
-            } catch (error) {
-                console.error("Egzersiz eklenirken hata: ", error);
-                showCustomMessage("Hata: Egzersiz eklenemedi.");
-            }
+            reader.onerror = function() {
+                showAlert('Dosya okuma başarısız oldu.', 'error');
+            };
+
+            reader.readAsDataURL(selectedFile); // Dosyayı Base64'e çevirerek oku
         }
 
         /**
-         * Egzersiz listesindeki silme butonu tıklamalarını yönetir.
+         * Belirtilen ID'ye sahip fotoğrafı LocalStorage'dan siler.
+         * @param {string} id Silinecek fotoğrafın ID'si.
          */
-        async function handleListClick(e) {
-            const deleteBtn = e.target.closest('.delete-exercise-btn');
-            if (!deleteBtn) return;
-
-            const indexToDelete = parseInt(deleteBtn.dataset.index);
-
-            try {
-                const data = getDayData(currentDay);
-
-                if (!data || !data.exercises) return;
-
-                // İstenen indeksi çıkararak yeni bir dizi oluştur
-                const updatedExercises = data.exercises.filter((_, i) => i !== indexToDelete);
-                
-                // Veriyi güncelle
-                data.exercises = updatedExercises;
-                
-                // localStorage'a kaydet
-                saveDayData(currentDay, data);
-
-                // UI'ı manuel olarak güncelle
-                renderExercises(updatedExercises);
-                
-            } catch (error) {
-                console.error("Egzersiz silinirken hata: ", error);
-                showCustomMessage("Hata: Egzersiz silinemedi.");
-            }
-        }
-
-        /**
-         * Ekranda geçici bir bildirim mesajı gösterir. (Bu fonksiyon eksikti)
-         */
-        function showCustomMessage(message, type = "error") {
-            const msgBox = document.createElement('div');
-            msgBox.textContent = message;
-            msgBox.className = `fixed bottom-5 right-5 p-4 rounded-lg shadow-xl text-white ${type === 'success' ? 'bg-green-600' : 'bg-red-600'}`;
-            document.body.appendChild(msgBox);
-            setTimeout(() => {
-                msgBox.remove();
-            }, 3000);
-        }
-
-        /**
-         * Firebase Authentication işlemi kaldırıldı.
-         */
-
-        // --- BAŞLANGIÇ ---
-        document.addEventListener('DOMContentLoaded', () => {
-            // Firebase ile ilgili tüm kodlar kaldırıldı
+        function deletePhoto(id) {
+            let photos = loadPhotos();
+            const initialLength = photos.length;
             
-            // UI event listener'larını ayarla
-            dayTabsContainer.addEventListener('click', handleTabClick);
-            saveMotivationBtn.addEventListener('click', saveMotivation);
-            addExerciseForm.addEventListener('submit', handleAddExercise);
-            exerciseListEl.addEventListener('click', handleListClick);
+            // Seçilen ID dışındaki tüm fotoğrafları filtrele
+            photos = photos.filter(photo => photo.id !== id);
 
-            // Başlangıç gününü yükle
-            updateActiveTab();
-            loadDataForDay(currentDay);
-        });
+            if (photos.length < initialLength) {
+                savePhotos(photos);
+                renderGallery();
+                showAlert('Fotoğraf başarıyla silindi.', 'success');
+            } else {
+                showAlert('Silinecek fotoğraf bulunamadı.', 'error');
+            }
+        }
+        
+        // --- Sürükle Bırak İşleyicileri ---
+        window.onload = function() {
+            const dropArea = document.getElementById('drop-area');
+
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropArea.addEventListener(eventName, () => {
+                    dropArea.classList.add('border-teal-500', 'bg-teal-50');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropArea.addEventListener(eventName, () => {
+                    dropArea.classList.remove('border-teal-500', 'bg-teal-50');
+                }, false);
+            });
+
+            dropArea.addEventListener('drop', handleDrop, false);
+
+            function handleDrop(e) {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                handleFileSelect(files);
+            }
+
+            // Başlangıçta galeriyi yükle
+            renderGallery();
+        };
 
     </script>
 </body>
