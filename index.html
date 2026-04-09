@@ -3,529 +3,285 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kelime Avcısı | Profesyonel Tarayıcı</title>
+    <title>Kelime Avcısı Cloud | Kişisel Veri Güvenliği</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root {
-            --primary: #6366f1;
-            --primary-hover: #4f46e5;
-            --bg-light: #f8fafc;
-            --card-light: #ffffff;
-            --text-light: #1e293b;
-            --bg-dark: #0f172a;
-            --card-dark: #1e293b;
-            --text-dark: #f1f5f9;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            transition: background-color 0.3s, color 0.3s;
-        }
-
-        body.light { background-color: var(--bg-light); color: var(--text-light); }
-        body.dark { background-color: var(--bg-dark); color: var(--text-dark); }
-
-        .glass-card {
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .dark .glass-card { background: var(--card-dark); border-color: rgba(255, 255, 255, 0.05); }
-        .light .glass-card { background: var(--card-light); box-shadow: 0 4px 20px -5px rgba(0, 0, 0, 0.1); }
-
-        .level-btn { transition: all 0.2s; }
-        .level-btn.active {
-            background-color: var(--primary);
-            color: white;
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-        }
-
-        .scan-line {
-            width: 100%;
-            height: 3px;
-            background: var(--primary);
-            position: absolute;
-            top: 0;
-            left: 0;
-            box-shadow: 0 0 20px var(--primary);
-            animation: scan 2.5s linear infinite;
-            display: none;
-            z-index: 10;
-        }
-
-        @keyframes scan {
-            0% { top: 0%; }
-            100% { top: 100%; }
-        }
-
-        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 10px;
-        }
-        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #475569; }
-
-        .loader {
-            border: 4px solid rgba(99, 102, 241, 0.1);
-            border-radius: 50%;
-            border-top: 4px solid var(--primary);
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-        }
-
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #1e293b; }
+        .glass { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .loader { border: 3px solid #f3f3f3; border-top: 3px solid #6366f1; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
-        .word-card {
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        .word-card:hover {
-            transform: translateY(-2px);
-        }
     </style>
 </head>
-<body class="light">
+<body class="bg-slate-50 min-h-screen">
 
-    <nav class="sticky top-0 z-50 py-4 px-6 border-b transition-colors glass-card">
+    <nav class="sticky top-0 z-50 p-4 glass border-b shadow-sm">
         <div class="max-w-6xl mx-auto flex justify-between items-center">
-            <div class="flex items-center gap-3">
-                <div class="bg-indigo-600 p-2.5 rounded-xl text-white">
-                    <i class="fa-solid fa-brain text-xl"></i>
+            <div class="flex items-center gap-2">
+                <div class="bg-indigo-600 p-2 rounded-lg text-white">
+                    <i class="fa-solid fa-user-shield"></i>
                 </div>
-                <span class="text-2xl font-extrabold tracking-tight">Kelime<span class="text-indigo-600">Avcısı</span></span>
+                <h1 class="text-xl font-bold tracking-tight text-slate-800">Kelime<span class="text-indigo-600">Avcısı</span>.private</h1>
             </div>
-            
-            <button id="themeToggle" class="p-3 rounded-2xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-sm">
-                <i class="fa-solid fa-moon text-indigo-600 dark:hidden"></i>
-                <i class="fa-solid fa-sun text-amber-400 hidden dark:block"></i>
-            </button>
+            <div id="userStatus" class="text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full flex items-center gap-2">
+                <div class="w-2 h-2 bg-slate-400 rounded-full animate-pulse"></div>
+                Oturum Açılıyor...
+            </div>
         </div>
     </nav>
 
-    <main class="max-w-6xl mx-auto px-6 py-10">
+    <main class="max-w-6xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
         
-        <div id="welcomeSection" class="text-center mb-16">
-            <h1 class="text-5xl md:text-6xl font-black mb-6 tracking-tight leading-tight">
-                Metindeki Kelimeleri <br><span class="text-indigo-600">Yapay Zeka</span> İle Yakala
-            </h1>
-            <p class="text-xl text-slate-500 dark:text-slate-400 max-w-3xl mx-auto leading-relaxed">
-                Kitap sayfaları, makaleler veya PDF'lerden senin seviyene en uygun kelimeleri saniyeler içinde ayıkla ve öğrenmeye başla.
-            </p>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-            
-            <!-- Left: Controls -->
-            <div class="lg:col-span-5 space-y-8">
+        <!-- Sol Panel -->
+        <div class="lg:col-span-5 space-y-6">
+            <div class="bg-white p-8 rounded-[2rem] shadow-xl border border-slate-100">
+                <h2 class="text-lg font-extrabold mb-6 flex items-center gap-2">
+                    <i class="fa-solid fa-shield-halved text-indigo-500"></i> Güvenli Analiz
+                </h2>
                 
-                <div class="glass-card rounded-[2.5rem] p-8">
-                    <div class="flex items-center gap-3 mb-6">
-                        <span class="bg-indigo-100 dark:bg-indigo-900/50 p-2 rounded-lg text-indigo-600 dark:text-indigo-400">
-                            <i class="fa-solid fa-file-export"></i>
-                        </span>
-                        <h3 class="font-bold text-xl">Dosya Yükle</h3>
-                    </div>
-                    
-                    <div id="dropZone" class="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-[2rem] p-12 text-center cursor-pointer hover:border-indigo-400 transition-all bg-slate-50/50 dark:bg-slate-800/50 group">
-                        <input type="file" id="fileInput" class="hidden" accept="image/*,.pdf">
-                        <div class="bg-white dark:bg-slate-700 w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl group-hover:scale-110 transition-transform">
-                            <i class="fa-solid fa-cloud-arrow-up text-4xl text-indigo-500"></i>
-                        </div>
-                        <p class="font-bold text-lg text-slate-700 dark:text-slate-200">Dosyayı Buraya Sürükleyin</p>
-                        <p class="text-sm text-slate-500 mt-2">Görüntü (OCR) veya PDF belgeleri</p>
-                    </div>
+                <div id="dropZone" class="border-2 border-dashed border-slate-200 rounded-3xl p-10 text-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50/30 transition-all group mb-6">
+                    <input type="file" id="fileInput" class="hidden">
+                    <i class="fa-solid fa-file-shield text-4xl text-slate-300 group-hover:text-indigo-500 mb-4 transition-colors"></i>
+                    <p class="text-sm font-bold text-slate-600">Dosya Yükle</p>
+                    <p class="text-[10px] text-slate-400 mt-1 uppercase">Sadece size özel saklanır</p>
+                </div>
 
-                    <div id="fileInfo" class="hidden mt-6 p-5 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-between border border-indigo-100 dark:border-indigo-800 animate-in fade-in slide-in-from-bottom-2">
-                        <div class="flex items-center gap-4 overflow-hidden">
-                            <i class="fa-solid fa-file-circle-check text-2xl text-indigo-500"></i>
-                            <span id="fileName" class="text-sm font-bold truncate">dosya_adi.pdf</span>
-                        </div>
-                        <button id="removeFile" class="text-slate-400 hover:text-red-500 transition-colors p-2">
-                            <i class="fa-solid fa-trash-can"></i>
-                        </button>
+                <div id="fileInfo" class="hidden mb-6 p-4 bg-indigo-50 rounded-2xl flex items-center justify-between border border-indigo-100">
+                    <span id="fileName" class="text-xs font-bold truncate pr-4 text-indigo-700 font-mono">dosya.pdf</span>
+                    <button id="removeFile" class="text-indigo-300 hover:text-red-500"><i class="fa-solid fa-circle-xmark"></i></button>
+                </div>
+
+                <div class="space-y-4 mb-8">
+                    <label class="text-xs font-black uppercase text-slate-400 tracking-widest">Seviye Seçin</label>
+                    <div class="grid grid-cols-5 gap-2" id="levelContainer">
+                        <button class="level-btn py-3 rounded-xl border border-slate-100 font-bold text-xs" data-level="A1">A1</button>
+                        <button class="level-btn py-3 rounded-xl border border-slate-100 font-bold text-xs" data-level="A2">A2</button>
+                        <button class="level-btn py-3 rounded-xl border border-slate-100 font-bold text-xs bg-indigo-600 text-white shadow-lg shadow-indigo-200" data-level="B1">B1</button>
+                        <button class="level-btn py-3 rounded-xl border border-slate-100 font-bold text-xs" data-level="B2">B2</button>
+                        <button class="level-btn py-3 rounded-xl border border-slate-100 font-bold text-xs" data-level="C1">C1</button>
                     </div>
                 </div>
 
-                <div class="glass-card rounded-[2.5rem] p-8">
-                    <div class="flex items-center gap-3 mb-8">
-                        <span class="bg-indigo-100 dark:bg-indigo-900/50 p-2 rounded-lg text-indigo-600 dark:text-indigo-400">
-                            <i class="fa-solid fa-layer-group"></i>
-                        </span>
-                        <h3 class="font-bold text-xl">Öğrenme Seviyesi</h3>
-                    </div>
-
-                    <div class="grid grid-cols-5 gap-3 mb-8">
-                        <button class="level-btn py-4 border border-slate-200 dark:border-slate-700 rounded-2xl font-black text-sm active" data-level="A1">A1</button>
-                        <button class="level-btn py-4 border border-slate-200 dark:border-slate-700 rounded-2xl font-black text-sm" data-level="A2">A2</button>
-                        <button class="level-btn py-4 border border-slate-200 dark:border-slate-700 rounded-2xl font-black text-sm" data-level="B1">B1</button>
-                        <button class="level-btn py-4 border border-slate-200 dark:border-slate-700 rounded-2xl font-black text-sm" data-level="B2">B2</button>
-                        <button class="level-btn py-4 border border-slate-200 dark:border-slate-700 rounded-2xl font-black text-sm" data-level="C1">C1</button>
-                    </div>
-
-                    <div id="pageRangeContainer" class="hidden space-y-4">
-                        <label class="block text-sm font-bold text-slate-500 uppercase tracking-widest">Taranacak Sayfa Aralığı</label>
-                        <div class="flex items-center gap-4">
-                            <input type="number" id="startPage" value="1" min="1" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-3 px-4 focus:ring-2 focus:ring-indigo-500 outline-none font-bold">
-                            <span class="text-slate-400 font-bold">den</span>
-                            <input type="number" id="endPage" value="10" min="1" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-3 px-4 focus:ring-2 focus:ring-indigo-500 outline-none font-bold">
-                        </div>
-                    </div>
-                </div>
-
-                <button id="scanBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold py-6 rounded-[2rem] shadow-2xl shadow-indigo-300 dark:shadow-none transition-all flex items-center justify-center gap-4 text-lg disabled:opacity-50">
-                    <i class="fa-solid fa-bolt-lightning"></i>
-                    TARAMAYI BAŞLAT
+                <button id="scanBtn" disabled class="w-full bg-slate-900 hover:bg-black text-white font-extrabold py-5 rounded-2xl transition-all shadow-xl flex items-center justify-center gap-3 disabled:opacity-30">
+                    <span>ÖZEL TARAMA BAŞLAT</span>
+                    <i class="fa-solid fa-lock"></i>
                 </button>
             </div>
 
-            <!-- Right: Results -->
-            <div class="lg:col-span-7">
-                
-                <!-- Initial -->
-                <div id="resultPlaceholder" class="glass-card rounded-[2.5rem] p-16 flex flex-col items-center justify-center text-center h-[650px] border-dashed border-2 border-slate-200 dark:border-slate-700">
-                    <div class="bg-slate-100 dark:bg-slate-800 p-10 rounded-[2.5rem] mb-8">
-                        <i class="fa-solid fa-microchip text-6xl text-slate-300"></i>
-                    </div>
-                    <h3 class="text-2xl font-black text-slate-400 mb-4">Analiz Bekleniyor</h3>
-                    <p class="text-slate-400 max-w-sm text-lg leading-relaxed">Analiz etmek istediğiniz dosyayı seçin. Yapay zeka gelişmiş OCR teknolojisi ile kelimeleri listeleyecektir.</p>
+            <!-- Kişisel Geçmiş -->
+            <div class="bg-white p-8 rounded-[2rem] shadow-xl border border-slate-100">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-extrabold">Size Özel Kayıtlar</h2>
+                    <i class="fa-solid fa-user-lock text-slate-300 text-sm"></i>
                 </div>
-
-                <!-- Loading -->
-                <div id="loadingView" class="hidden glass-card rounded-[2.5rem] p-12 flex flex-col items-center justify-center text-center h-[650px]">
-                    <div class="relative w-56 h-72 bg-white dark:bg-slate-800 rounded-3xl overflow-hidden mb-10 border-4 border-slate-100 dark:border-slate-700 shadow-2xl">
-                        <div class="scan-line" id="scanLine"></div>
-                        <div class="p-6 space-y-4 opacity-20">
-                            <div class="h-3 bg-slate-300 dark:bg-slate-600 rounded-full w-full"></div>
-                            <div class="h-3 bg-slate-300 dark:bg-slate-600 rounded-full w-4/5"></div>
-                            <div class="h-3 bg-slate-300 dark:bg-slate-600 rounded-full w-full"></div>
-                            <div class="h-3 bg-slate-300 dark:bg-slate-600 rounded-full w-3/4"></div>
-                            <div class="h-3 bg-slate-300 dark:bg-slate-600 rounded-full w-full"></div>
-                            <div class="h-3 bg-slate-300 dark:bg-slate-600 rounded-full w-5/6"></div>
-                            <div class="h-3 bg-slate-300 dark:bg-slate-600 rounded-full w-full"></div>
-                        </div>
-                    </div>
-                    <div class="loader mb-8"></div>
-                    <h3 class="text-2xl font-black text-indigo-600 dark:text-indigo-400 mb-3">AI İşlem Yapıyor</h3>
-                    <p id="statusText" class="text-slate-500 font-medium text-lg">Kelime hazinesi taranıyor...</p>
-                </div>
-
-                <!-- Results -->
-                <div id="resultsView" class="hidden glass-card rounded-[2.5rem] flex flex-col h-[750px] overflow-hidden animate-in zoom-in-95 duration-300">
-                    <div class="p-8 bg-indigo-600 text-white flex justify-between items-center shrink-0">
-                        <div>
-                            <div class="flex items-center gap-3 mb-1">
-                                <i class="fa-solid fa-list-check"></i>
-                                <h2 class="text-2xl font-black">Bulunan Kelimeler</h2>
-                            </div>
-                            <p id="resultMeta" class="text-indigo-100 font-semibold opacity-80 uppercase text-xs tracking-widest">B1 Seviyesi • 45 Kelime</p>
-                        </div>
-                        <button onclick="resetApp()" class="bg-white/20 hover:bg-white/30 w-12 h-12 rounded-2xl transition-all flex items-center justify-center">
-                            <i class="fa-solid fa-rotate-left text-xl"></i>
-                        </button>
-                    </div>
-                    
-                    <div id="resultsList" class="flex-1 overflow-y-auto p-8 custom-scrollbar bg-slate-50/50 dark:bg-slate-900/40 space-y-5">
-                        <!-- Words injected here -->
-                    </div>
-
-                    <div class="p-5 text-center bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700/50">
-                        <div class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full text-xs font-black">
-                            <i class="fa-solid fa-sparkles"></i>
-                            GPT-4 OCR MOTORU AKTİF
-                        </div>
+                <div id="historyList" class="space-y-3 max-h-60 overflow-y-auto custom-scrollbar">
+                    <div class="flex flex-col items-center py-4 gap-2 opacity-30">
+                         <div class="loader"></div>
+                         <p class="text-[10px] font-bold">Yükleniyor...</p>
                     </div>
                 </div>
-
             </div>
         </div>
+
+        <!-- Sağ Panel -->
+        <div class="lg:col-span-7">
+            <div id="resultsView" class="bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 h-[800px] flex flex-col overflow-hidden">
+                <div class="p-8 border-b border-slate-50 flex justify-between items-center bg-indigo-600 text-white">
+                    <div>
+                        <h2 class="text-2xl font-black">Kelime Analizi</h2>
+                        <p id="resultCount" class="text-xs font-bold text-indigo-100 opacity-80 mt-1">GİZLİ OTURUM AKTİF</p>
+                    </div>
+                    <div id="syncStatus" class="hidden flex items-center gap-2 text-[10px] font-bold bg-white/20 px-3 py-1 rounded-full">
+                        <i class="fa-solid fa-eye-slash"></i> SADECE SİZ GÖRÜYORSUNUZ
+                    </div>
+                </div>
+
+                <div id="resultsList" class="flex-1 overflow-y-auto p-8 space-y-4 custom-scrollbar bg-slate-50/30">
+                    <div id="emptyState" class="h-full flex flex-col items-center justify-center text-center opacity-40">
+                        <i class="fa-solid fa-fingerprint text-6xl mb-4"></i>
+                        <p class="font-bold">Kimliğiniz doğrulandıktan sonra tarama yapabilirsiniz.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </main>
 
-    <script>
-        // State
-        let currentLevel = 'A1';
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
+
+        // Firebase Yapılandırması: Ortam değişkenlerinden güvenli bir şekilde çekiliyor
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'kelime-avcisi-v4';
+
+        let user = null;
+        let selectedLevel = 'B1';
         let currentFile = null;
+        let unsubscribeHistory = null;
 
-        // UI Selectors
-        const body = document.body;
-        const themeToggle = document.getElementById('themeToggle');
-        const dropZone = document.getElementById('dropZone');
-        const fileInput = document.getElementById('fileInput');
-        const fileInfo = document.getElementById('fileInfo');
-        const fileNameDisplay = document.getElementById('fileName');
         const scanBtn = document.getElementById('scanBtn');
-        const levelBtns = document.querySelectorAll('.level-btn');
         const resultsList = document.getElementById('resultsList');
-        const statusText = document.getElementById('statusText');
-        const resultMeta = document.getElementById('resultMeta');
+        const historyList = document.getElementById('historyList');
+        const userStatus = document.getElementById('userStatus');
 
-        // Theme
-        themeToggle.addEventListener('click', () => {
-            body.classList.toggle('dark');
-            body.classList.toggle('light');
+        // Oturum açma ve Realtime Kısıtlaması (RULE 3)
+        const initAuth = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Auth initialization failed:", error);
+            }
+        };
+
+        initAuth();
+
+        onAuthStateChanged(auth, (u) => {
+            if (u) {
+                user = u;
+                userStatus.innerHTML = `<i class="fa-solid fa-circle-check text-green-500"></i> Size Özel Kanal: ${u.uid.substring(0,6)}`;
+                scanBtn.disabled = false;
+                
+                if (unsubscribeHistory) unsubscribeHistory();
+                loadPrivateHistory(u.uid);
+            }
         });
 
-        // Levels
-        levelBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                levelBtns.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                currentLevel = btn.getAttribute('data-level');
-            });
-        });
-
-        // File Handling
-        dropZone.addEventListener('click', () => fileInput.click());
-        fileInput.addEventListener('change', (e) => {
+        // Dosya ve Seviye işlemleri
+        document.getElementById('dropZone').onclick = () => document.getElementById('fileInput').click();
+        document.getElementById('fileInput').onchange = (e) => {
             const file = e.target.files[0];
             if (file) {
                 currentFile = file;
-                fileNameDisplay.textContent = file.name;
-                fileInfo.classList.remove('hidden');
-                dropZone.classList.add('hidden');
-                if (file.type === 'application/pdf') document.getElementById('pageRangeContainer').classList.remove('hidden');
+                document.getElementById('fileName').textContent = file.name;
+                document.getElementById('fileInfo').classList.remove('hidden');
+                document.getElementById('dropZone').classList.add('hidden');
             }
-        });
+        };
 
-        document.getElementById('removeFile').addEventListener('click', () => {
+        document.getElementById('removeFile').onclick = () => {
             currentFile = null;
-            fileInfo.classList.add('hidden');
-            dropZone.classList.remove('hidden');
-            document.getElementById('pageRangeContainer').classList.add('hidden');
+            document.getElementById('fileInfo').classList.add('hidden');
+            document.getElementById('dropZone').classList.remove('hidden');
+        };
+
+        document.querySelectorAll('.level-btn').forEach(btn => {
+            btn.onclick = (e) => {
+                document.querySelectorAll('.level-btn').forEach(b => b.className = "level-btn py-3 rounded-xl border border-slate-100 font-bold text-xs");
+                e.target.className = "level-btn py-3 rounded-xl border border-slate-100 font-bold text-xs bg-indigo-600 text-white shadow-lg shadow-indigo-200";
+                selectedLevel = e.target.dataset.level;
+            };
         });
 
-        // LARGE DATABASE (Populated with many words per level)
-        const hugeDatabase = {
-            'A1': [
-                {w: "Always", m: "Her zaman", c: "I always drink coffee in the morning."},
-                {w: "Beautiful", m: "Güzel", c: "The flowers in the garden are beautiful."},
-                {w: "Clean", m: "Temiz", c: "Please keep your room clean."},
-                {w: "Dangerous", m: "Tehlikeli", c: "It is dangerous to swim in this river."},
-                {w: "Early", m: "Erken", c: "He wakes up early every day."},
-                {w: "Fast", m: "Hızlı", c: "That car is very fast."},
-                {w: "Garden", m: "Bahçe", c: "We have a small garden."},
-                {w: "Healthy", m: "Sağlıklı", c: "Fruit is healthy for you."},
-                {w: "Important", m: "Önemli", c: "Learning English is important."},
-                {w: "Journey", m: "Yolculuk", c: "Have a safe journey!"},
-                {w: "Kind", m: "Nazik", c: "She is a very kind person."},
-                {w: "Learn", m: "Öğrenmek", c: "I want to learn more words."},
-                {w: "Mountain", m: "Dağ", c: "The mountain is covered with snow."},
-                {w: "Never", m: "Asla", c: "I never lie to my friends."},
-                {w: "Often", m: "Sık sık", c: "How often do you go to the gym?"},
-                {w: "People", m: "İnsanlar", c: "There are many people in the park."},
-                {w: "Quiet", m: "Sessiz", c: "Please be quiet in the library."},
-                {w: "Ready", m: "Hazır", c: "Are you ready to go?"},
-                {w: "Simple", m: "Basit", c: "This is a simple question."},
-                {w: "Together", m: "Birlikte", c: "We study together every evening."},
-                {w: "Useful", m: "Faydalı", c: "This tool is very useful."},
-                {w: "Village", m: "Köy", c: "My grandparents live in a village."},
-                {w: "Weather", m: "Hava", c: "The weather is very hot today."},
-                {w: "Young", m: "Genç", c: "He is a young doctor."},
-                {w: "Animal", m: "Hayvan", c: "My favorite animal is a dog."},
-                {w: "Bread", m: "Ekmek", c: "I buy fresh bread every morning."},
-                {w: "Careful", m: "Dikkatli", c: "Be careful when you cross the street."},
-                {w: "Different", m: "Farklı", c: "We are all different."},
-                {w: "Expensive", m: "Pahalı", c: "This watch is too expensive."},
-                {w: "Famous", m: "Ünlü", c: "He wants to be a famous singer."}
-            ],
-            'A2': [
-                {w: "Accident", m: "Kaza", c: "He had a small accident yesterday."},
-                {w: "Believe", m: "İnanmak", c: "Do you believe in ghost stories?"},
-                {w: "Century", m: "Yüzyıl", c: "This building is from the 18th century."},
-                {w: "Decide", m: "Karar vermek", c: "I can't decide which one to buy."},
-                {w: "Education", m: "Eğitim", c: "Education is very valuable."},
-                {w: "Fashion", m: "Moda", c: "She follows the latest fashion."},
-                {w: "Geography", m: "Coğrafya", c: "I enjoy learning about geography."},
-                {w: "History", m: "Tarih", c: "The museum is full of history."},
-                {w: "Improve", m: "Geliştirmek", c: "I want to improve my speaking skills."},
-                {w: "Language", m: "Dil", c: "How many languages do you speak?"},
-                {w: "Mistake", m: "Hata", c: "Don't worry, everyone makes mistakes."},
-                {w: "Notice", m: "Fark etmek", c: "Did you notice her new haircut?"},
-                {w: "Opinion", m: "Fikir", c: "What is your opinion about the movie?"},
-                {w: "Perhaps", m: "Belki", c: "Perhaps it will rain tomorrow."},
-                {w: "Receive", m: "Teslim almak", c: "I received your letter today."},
-                {w: "Sentence", m: "Cümle", c: "Write a sentence using this word."},
-                {w: "Traffic", m: "Trafik", c: "The traffic was very heavy today."},
-                {w: "Underline", m: "Altını çizmek", c: "Underline the important parts."},
-                {w: "Vacation", m: "Tatil", c: "Where are you going for vacation?"},
-                {w: "Without", m: "Olmadan", c: "I can't drink tea without sugar."},
-                {w: "Adventures", m: "Maceralar", c: "He loves reading adventure books."},
-                {w: "Business", m: "İş", c: "My father has a small business."},
-                {w: "Common", m: "Yaygın", c: "Flu is very common in winter."},
-                {w: "Discovery", m: "Keşif", c: "The discovery changed everything."},
-                {w: "Empty", m: "Boş", c: "The box is empty."},
-                {w: "Fresh", m: "Taze", c: "I love fresh orange juice."},
-                {w: "Guess", m: "Tahmin etmek", c: "Can you guess my age?"},
-                {w: "Happen", m: "Olmak", c: "What happened here?"},
-                {w: "Island", m: "Ada", c: "They live on a beautiful island."},
-                {w: "Kitchen", m: "Mutfak", c: "She is cooking in the kitchen."}
-            ],
-            'B1': [
-                {w: "Abundant", m: "Bol, Bereketli", c: "The region is abundant in natural resources."},
-                {w: "Challenge", m: "Zorluk", c: "Climbing that mountain was a big challenge."},
-                {w: "Dedicated", m: "Kendini adamış", c: "He is a dedicated teacher."},
-                {w: "Encourage", m: "Cesaretlendirmek", c: "My coach encouraged me to try again."},
-                {w: "Fascinating", m: "Büyüleyici", c: "The history of Egypt is fascinating."},
-                {w: "Generous", m: "Cömert", c: "He is very generous with his time."},
-                {w: "Hesitate", m: "Tereddüt etmek", c: "Please don't hesitate to ask questions."},
-                {w: "Influence", m: "Etki", c: "Music has a strong influence on people."},
-                {w: "Knowledge", m: "Bilgi", c: "He has a lot of knowledge about cars."},
-                {w: "Maintain", m: "Sürdürmek", c: "It's important to maintain a healthy weight."},
-                {w: "Necessary", m: "Gerekli", c: "Is it necessary to bring a passport?"},
-                {w: "Opportunity", m: "Fırsat", c: "Don't miss this opportunity."},
-                {w: "Persuade", m: "İkna etmek", c: "He tried to persuade me to go."},
-                {w: "Reasonable", m: "Makul", c: "The price of the house is reasonable."},
-                {w: "Significant", m: "Önemli, Belirgin", c: "There is a significant difference."},
-                {w: "Target", m: "Hedef", c: "Our target is to increase sales."},
-                {w: "Unique", m: "Benzersiz", c: "Every person has a unique fingerprint."},
-                {w: "Valuable", m: "Değerli", c: "This information is very valuable."},
-                {w: "Wealthy", m: "Zengin", c: "They are a very wealthy family."},
-                {w: "Ambition", m: "Hırs", c: "Her ambition is to become a CEO."},
-                {w: "Bargain", m: "Kelepir", c: "This shirt was a real bargain."},
-                {w: "Consequence", m: "Sonuç", c: "Every action has a consequence."},
-                {w: "Delicious", m: "Lezzetli", c: "The cake was delicious."},
-                {w: "Environment", m: "Çevre", c: "We must protect the environment."},
-                {w: "Frequent", m: "Sık", c: "He is a frequent visitor here."},
-                {w: "Genuine", m: "Gerçek, Samimi", c: "Is that a genuine diamond?"},
-                {w: "Horrible", m: "Korkunç", c: "The weather was horrible yesterday."},
-                {w: "Immense", m: "Muazzam", c: "The task was an immense challenge."},
-                {w: "Justice", m: "Adalet", c: "The people demanded justice."},
-                {w: "Likely", m: "Muhtemel", c: "It is likely to snow tomorrow."}
-            ],
-            'B2': [
-                {w: "Acknowledge", m: "Kabul etmek, Onaylamak", c: "He acknowledged his mistake."},
-                {w: "Beneficial", m: "Yararlı", c: "Regular exercise is beneficial for health."},
-                {w: "Comprehensive", m: "Kapsamlı", c: "They gave a comprehensive report."},
-                {w: "Distinguish", m: "Ayırt etmek", c: "It's hard to distinguish between the two."},
-                {w: "Elaborate", m: "Detaylandırmak", c: "Could you elaborate on that point?"},
-                {w: "Fluctuate", m: "Dalgalanmak", c: "Prices fluctuate according to demand."},
-                {w: "Guarantee", m: "Garanti etmek", c: "I can't guarantee the results."},
-                {w: "Hypothesis", m: "Hipotez", c: "We need to test this hypothesis."},
-                {w: "Implement", m: "Uygulamak", c: "The changes will be implemented soon."},
-                {w: "Justify", m: "Haklı çıkarmak", c: "How can you justify such a decision?"},
-                {w: "Magnificent", m: "Muhteşem", c: "The view from the top is magnificent."},
-                {w: "Negotiate", m: "Müzakere etmek", c: "We managed to negotiate a better deal."},
-                {w: "Obstacle", m: "Engel", c: "Lack of money is a major obstacle."},
-                {w: "Pragmatic", m: "Uygulamacı, Gerçekçi", c: "We need a pragmatic solution."},
-                {w: "Reluctant", m: "İsteksiz", c: "He was reluctant to share the news."},
-                {w: "Sustainable", m: "Sürdürülebilir", c: "We need sustainable energy sources."},
-                {w: "Tremendous", m: "Dehşet verici, Muazzam", c: "They put in a tremendous effort."},
-                {w: "Underestimate", m: "Küçümsemek", c: "Never underestimate your opponent."},
-                {w: "Vulnerable", m: "Savunmasız", c: "Elderly people are more vulnerable."},
-                {w: "Widespread", m: "Yaygın", c: "The disease is now widespread."},
-                {w: "Accomplish", m: "Başarmak", c: "You can accomplish anything you want."},
-                {w: "Bewildered", m: "Şaşkın", c: "He looked completely bewildered."},
-                {w: "Controversial", m: "Tartışmalı", c: "It was a controversial decision."},
-                {w: "Demolish", m: "Yıkmak", c: "The old factory was demolished."},
-                {w: "Exaggerate", m: "Abartmak", c: "Don't exaggerate the problem."},
-                {w: "Feasible", m: "Uygulanabilir", c: "Is the project economically feasible?"},
-                {w: "Gratitude", m: "Şükran", c: "I want to express my gratitude."},
-                {w: "Hinder", m: "Engellemek", c: "High winds hindered the rescue attempt."},
-                {w: "Incentive", m: "Teşvik", c: "The bonus is a great incentive."},
-                {w: "Lethal", m: "Ölümcül", c: "The snake's venom is lethal."}
-            ],
-            'C1': [
-                {w: "Ambiguous", m: "Belirsiz, İki anlamlı", c: "The wording of the law is ambiguous."},
-                {w: "Cognitive", m: "Bilişsel", c: "Cognitive therapy can be very effective."},
-                {w: "Deteriorate", m: "Kötüleşmek", c: "The condition of the patient deteriorated."},
-                {w: "Eloquent", m: "Güzel konuşan, Etkili", c: "She made an eloquent speech."},
-                {w: "Formidable", m: "Korkunç, Dişli", c: "They face a formidable challenge."},
-                {w: "Gregarious", m: "Sokulgan, Sosyal", c: "He is a gregarious person who loves parties."},
-                {w: "Inevitably", m: "Kaçınılmaz olarak", c: "Inevitably, errors will occur."},
-                {w: "Judicious", m: "Makul, Akıllıca", c: "A judicious use of resources is required."},
-                {w: "Lament", m: "Yas tutmak, Pişmanlık duymak", c: "They lamented the loss of their leader."},
-                {w: "Meticulous", m: "Titiz", c: "The researcher was meticulous in her work."},
-                {w: "Nefarious", m: "Hain, Kötü niyetli", c: "The detective uncovered a nefarious plot."},
-                {w: "Obsolete", m: "Modası geçmiş", c: "This technology is now obsolete."},
-                {w: "Pervasive", m: "Her tarafa yayılmış", c: "The influence of social media is pervasive."},
-                {w: "Quaint", m: "Antika, İlginç", c: "We stayed in a quaint little cottage."},
-                {w: "Resilient", m: "Dayanıklı, Esnek", c: "She is a resilient person who recovers fast."},
-                {w: "Subtle", m: "Hemen göze çarpmayan", c: "There is a subtle difference between them."},
-                {w: "Tacit", m: "Zımni, Söylenmeden anlaşılan", c: "There was a tacit agreement between them."},
-                {w: "Ubiquitous", m: "Her yerde bulunan", c: "Smartphones are ubiquitous nowadays."},
-                {w: "Vehement", m: "Şiddetli, Coşkulu", c: "He issued a vehement denial."},
-                {w: "Wary", m: "Temkinli", c: "Be wary of strangers asking for money."},
-                {w: "Alleviate", m: "Hafifletmek", c: "The medicine helped alleviate the pain."},
-                {w: "Benevolent", m: "Hayırsever", c: "The benevolent donor remained anonymous."},
-                {w: "Conspicuous", m: "Göze çarpan", c: "He was conspicuous by his absence."},
-                {w: "Dichotomy", m: "İkiye bölünme", c: "There is a dichotomy between theory and practice."},
-                {w: "Ephemeral", m: "Geçici, Kısa süreli", c: "Fame in the internet age is often ephemeral."},
-                {w: "Fastidious", m: "Titiz, Müşkülpesent", c: "She is very fastidious about her clothes."},
-                {w: "Garrulous", m: "Geveze", c: "The garrulous neighbor kept us talking."},
-                {w: "Iconoclast", m: "Putkırıcı, Geleneklere karşı", c: "The artist was an iconoclast."},
-                {w: "Incessant", m: "Aralıksız", c: "The incessant rain ruined our trip."},
-                {w: "Juxtapose", m: "Yan yana koymak", c: "The gallery juxtaposed modern and old art."}
-            ]
-        };
+        // Veriyi Kaydetme
+        scanBtn.onclick = async () => {
+            if (!currentFile || !user) return;
 
-        // Execution logic
-        const scanBtnFn = async () => {
-            if (!currentFile) return;
+            scanBtn.disabled = true;
+            scanBtn.innerHTML = `<div class="loader"></div> <span>ŞİFRELENİYOR...</span>`;
 
-            document.getElementById('resultPlaceholder').classList.add('hidden');
-            document.getElementById('resultsView').classList.add('hidden');
-            document.getElementById('loadingView').classList.remove('hidden');
-            document.getElementById('scanLine').style.display = 'block';
+            const mockWords = generateMockWords(selectedLevel);
 
-            const statusSteps = [
-                "Görüntü netleştiriliyor...",
-                "Satır satır OCR taraması yapılıyor...",
-                "Kelime sıklığı analiz ediliyor...",
-                `${currentLevel} seviyesine uygun filtreleme yapılıyor...`,
-                "Sözlük anlamları eşleştiriliyor..."
-            ];
+            try {
+                await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'scans'), {
+                    fileName: currentFile.name,
+                    level: selectedLevel,
+                    wordCount: mockWords.length,
+                    words: mockWords,
+                    timestamp: Date.now()
+                });
 
-            for (let step of statusSteps) {
-                statusText.textContent = step;
-                await new Promise(r => setTimeout(r, 1200));
+                renderResults(mockWords, selectedLevel);
+                document.getElementById('syncStatus').classList.remove('hidden');
+            } catch (err) {
+                console.error("Hata:", err);
+            } finally {
+                scanBtn.disabled = false;
+                scanBtn.innerHTML = `<span>ÖZEL TARAMA BAŞLAT</span> <i class="fa-solid fa-lock"></i>`;
             }
-
-            renderResults();
         };
 
-        const renderResults = () => {
-            document.getElementById('loadingView').classList.add('hidden');
-            document.getElementById('scanLine').style.display = 'none';
-            document.getElementById('resultsView').classList.remove('hidden');
+        // Realtime Kısıtlı Dinleme (Sadece mevcut kullanıcı)
+        function loadPrivateHistory(uid) {
+            const q = collection(db, 'artifacts', appId, 'users', uid, 'scans');
+            
+            unsubscribeHistory = onSnapshot(q, (snapshot) => {
+                historyList.innerHTML = '';
+                const docs = [];
+                snapshot.forEach(doc => docs.push({id: doc.id, ...doc.data()}));
+                
+                docs.sort((a, b) => b.timestamp - a.timestamp);
 
-            const words = hugeDatabase[currentLevel] || [];
-            resultMeta.textContent = `${currentLevel} SEVİYESİ • ${words.length} KRİTİK KELİME ANALİZ EDİLDİ`;
+                if (docs.length === 0) {
+                    historyList.innerHTML = `<p class="text-[10px] text-slate-400 italic text-center py-4 underline">Gizli geçmişiniz henüz boş.</p>`;
+                    return;
+                }
 
-            resultsList.innerHTML = '';
-            words.forEach((item, index) => {
-                const card = `
-                    <div class="word-card bg-white dark:bg-slate-800 p-6 rounded-[1.5rem] shadow-sm border border-slate-100 dark:border-slate-700/50 flex gap-5">
-                        <div class="flex flex-col items-center shrink-0">
-                            <span class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-sm border border-indigo-100 dark:border-indigo-800">
-                                ${index + 1}
-                            </span>
+                docs.forEach(data => {
+                    const item = document.createElement('div');
+                    item.className = "p-3 bg-white border border-slate-100 rounded-xl flex justify-between items-center cursor-pointer hover:border-indigo-400 transition-all shadow-sm";
+                    item.innerHTML = `
+                        <div class="overflow-hidden">
+                            <p class="text-[9px] font-black text-indigo-600 uppercase tracking-tighter">${data.level} Analizi</p>
+                            <p class="text-xs font-bold text-slate-700 truncate w-24">${data.fileName}</p>
                         </div>
+                        <i class="fa-solid fa-chevron-right text-[10px] text-slate-300"></i>
+                    `;
+                    item.onclick = () => renderResults(data.words, data.level);
+                    historyList.appendChild(item);
+                });
+            }, (err) => {
+                console.error("Erişim Reddedildi:", err);
+            });
+        }
+
+        function renderResults(words, level) {
+            resultsList.innerHTML = '';
+            document.getElementById('emptyState').classList.add('hidden');
+            document.getElementById('resultCount').textContent = `KİŞİSEL GÖRÜNÜM • ${level}`;
+            
+            words.forEach((item, i) => {
+                const card = `
+                    <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex gap-4">
+                        <div class="w-6 h-6 rounded-md bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-[10px] shrink-0">${i+1}</div>
                         <div class="flex-1">
-                            <div class="flex items-center justify-between mb-2">
-                                <h4 class="text-xl font-extrabold text-slate-900 dark:text-white group-hover:text-indigo-600 transition-colors">${item.w}</h4>
-                                <span class="bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter">
-                                    ${currentLevel}
-                                </span>
+                            <div class="flex justify-between">
+                                <h4 class="font-black text-slate-800">${item.w}</h4>
+                                <span class="text-indigo-400 font-bold text-[10px]">${item.m}</span>
                             </div>
-                            <p class="text-indigo-500 dark:text-indigo-400 font-bold mb-3">/ ${item.m} /</p>
-                            <div class="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border-l-4 border-indigo-400">
-                                <p class="text-sm text-slate-600 dark:text-slate-400 italic font-medium leading-relaxed">"${item.c}"</p>
-                            </div>
+                            <p class="text-xs text-slate-500 mt-1 italic">"${item.c}"</p>
                         </div>
                     </div>
                 `;
                 resultsList.insertAdjacentHTML('beforeend', card);
             });
-        };
+        }
 
-        const resetApp = () => {
-            document.getElementById('resultsView').classList.add('hidden');
-            document.getElementById('resultPlaceholder').classList.remove('hidden');
-        };
-
-        scanBtn.addEventListener('click', scanBtnFn);
+        function generateMockWords(level) {
+            const base = {
+                'A1': [{w:'Cat', m:'Kedi', c:'The cat is sleeping.'}, {w:'Milk', m:'Süt', c:'I want milk.'}],
+                'B1': [{w:'Influence', m:'Etki', c:'Social media influence.'}, {w:'Necessary', m:'Gerekli', c:'It is necessary.'}],
+                'C1': [{w:'Perpetual', m:'Ebedi', c:'Perpetual motion.'}, {w:'Ambiguous', m:'Belirsiz', c:'Ambiguous answer.'}]
+            };
+            const list = base[level] || base['B1'];
+            let final = [];
+            for(let i=0; i<20; i++) {
+                const random = list[Math.floor(Math.random()*list.length)];
+                final.push({...random, w: random.w + " #" + (i+1)});
+            }
+            return final;
+        }
     </script>
 </body>
 </html>
