@@ -28,7 +28,6 @@
         .loader { border: 3px solid #334155; border-top: 3px solid #6366f1; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        /* Dark Mode Styles */
         .dark body { background-color: #0f172a; color: #f1f5f9; }
         .dark .card { background-color: #1e293b; border-color: #334155; }
     </style>
@@ -45,13 +44,12 @@
             </div>
             <div id="userStatus" class="text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full flex items-center gap-2">
                 <div class="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
-                Sistem Hazırlanıyor...
+                Bağlanıyor...
             </div>
         </div>
     </nav>
 
     <main class="max-w-6xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-8">
-        
         <!-- Sol Panel -->
         <div class="lg:col-span-5 space-y-6">
             <div class="card bg-white dark:bg-darkCard p-8 rounded-[2rem] shadow-xl border border-slate-100 dark:border-slate-800 transition-all">
@@ -97,7 +95,7 @@
                 <div id="historyList" class="space-y-3 max-h-60 overflow-y-auto custom-scrollbar">
                     <div class="flex flex-col items-center py-8 gap-3 opacity-40">
                          <div class="loader"></div>
-                         <p class="text-[10px] font-bold tracking-widest uppercase">Veriler Çekiliyor...</p>
+                         <p class="text-[10px] font-bold tracking-widest uppercase">Bulut Senkronizasyonu...</p>
                     </div>
                 </div>
             </div>
@@ -109,104 +107,78 @@
                 <div class="p-8 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-indigo-600 text-white">
                     <div>
                         <h2 class="text-2xl font-black">Analiz Sonuçları</h2>
-                        <p id="resultCount" class="text-xs font-bold text-indigo-100 opacity-80 mt-1">GÜVENLİ OTURUM AKTİF</p>
+                        <p id="resultCount" class="text-xs font-bold text-indigo-100 opacity-80 mt-1">PROJE: ALSAT-20AFB</p>
                     </div>
                     <div id="syncStatus" class="hidden flex items-center gap-2 text-[10px] font-bold bg-black/20 px-3 py-1 rounded-full">
-                        <i class="fa-solid fa-cloud-check"></i> SENKRONİZE
+                        <i class="fa-solid fa-cloud-check"></i> BULUTA KAYDEDİLDİ
                     </div>
                 </div>
 
                 <div id="resultsList" class="flex-1 overflow-y-auto p-8 space-y-4 custom-scrollbar bg-slate-50/50 dark:bg-slate-900/20">
                     <div id="emptyState" class="h-full flex flex-col items-center justify-center text-center opacity-30">
                         <i class="fa-solid fa-magnifying-glass-chart text-7xl mb-4"></i>
-                        <p class="font-bold text-lg">Hemen bir PDF yükleyip analiz edin.</p>
-                        <p class="text-sm">Bulut tabanlı yapay zeka kelimeleri ayıklasın.</p>
+                        <p class="font-bold text-lg">Dosya Seçimi Bekleniyor</p>
+                        <p class="text-sm">Analiz edilen kelimeler burada görünecek.</p>
                     </div>
                 </div>
             </div>
         </div>
-
     </main>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
 
-        // Global değişkenler ve Fallback Konfigürasyon
-        const getFirebaseConfig = () => {
-            try {
-                if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-                    return JSON.parse(__firebase_config);
-                }
-            } catch (e) {
-                console.warn("Firebase Config parse hatası:", e);
-            }
-            return null;
+        // Senin paylaştığın Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyBHyVTGfOCL_QhDm3iQSp_zkhwtDq-Pz54",
+            authDomain: "alsat-20afb.firebaseapp.com",
+            databaseURL: "https://alsat-20afb-default-rtdb.firebaseio.com",
+            projectId: "alsat-20afb",
+            storageBucket: "alsat-20afb.firebasestorage.app",
+            messagingSenderId: "675661559230",
+            appId: "1:675661559230:web:5401e1aee6ccd775caf5ef"
         };
 
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'kelime-avcisi-v4';
         let db, auth, user;
         let selectedLevel = 'B1';
         let currentFile = null;
         let unsubscribeHistory = null;
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'kelime-avcisi-v4';
 
         const scanBtn = document.getElementById('scanBtn');
         const resultsList = document.getElementById('resultsList');
         const historyList = document.getElementById('historyList');
         const userStatus = document.getElementById('userStatus');
 
-        // Oturum açma ve sistem başlatma
-        async function startSystem() {
-            const config = getFirebaseConfig();
-            
-            if (!config || !config.apiKey) {
-                userStatus.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin text-amber-500"></i> Yapılandırma Bekleniyor...`;
-                setTimeout(startSystem, 2000);
-                return;
-            }
-
+        // Sistemi Başlat
+        async function initApp() {
             try {
-                const app = initializeApp(config);
+                const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
 
-                onAuthStateChanged(auth, (u) => {
+                onAuthStateChanged(auth, async (u) => {
                     if (u) {
                         user = u;
                         userStatus.innerHTML = `<i class="fa-solid fa-user-shield text-green-500"></i> ${u.uid.substring(0,8)}...`;
                         scanBtn.disabled = false;
-                        if (unsubscribeHistory) unsubscribeHistory();
-                        loadPrivateHistory(u.uid, appId);
+                        loadHistory(u.uid);
                     } else {
-                        userStatus.innerHTML = `<div class="loader !w-3 !h-3"></div> Oturum Açılıyor...`;
-                        
-                        const performSignIn = async () => {
-                            try {
-                                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                                    await signInWithCustomToken(auth, __initial_auth_token);
-                                } else {
-                                    await signInAnonymously(auth);
-                                }
-                            } catch (error) {
-                                console.error("Auth hatası:", error);
-                                userStatus.innerHTML = `<i class="fa-solid fa-rotate text-amber-500"></i> Yeniden Deneniyor...`;
-                                setTimeout(performSignIn, 3000);
-                            }
-                        };
-                        performSignIn();
+                        userStatus.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Giriş Yapılıyor...`;
+                        await signInAnonymously(auth);
                     }
                 });
             } catch (err) {
-                console.error("Başlatma hatası:", err);
-                userStatus.innerHTML = `<i class="fa-solid fa-circle-exclamation text-red-500"></i> Bağlantı Hatası`;
-                setTimeout(startSystem, 5000);
+                console.error("Firebase Hatası:", err);
+                userStatus.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-red-500"></i> Bağlantı Hatası`;
             }
         }
 
-        startSystem();
+        initApp();
 
-        // Dosya ve Arayüz Fonksiyonları
+        // UI Kontrolleri
         document.getElementById('dropZone').onclick = () => document.getElementById('fileInput').click();
         document.getElementById('fileInput').onchange = (e) => {
             const file = e.target.files[0];
@@ -226,72 +198,76 @@
 
         document.querySelectorAll('.level-btn').forEach(btn => {
             btn.onclick = (e) => {
-                document.querySelectorAll('.level-btn').forEach(b => b.className = "level-btn py-3 rounded-xl border border-slate-100 dark:border-slate-700 font-bold text-xs hover:bg-slate-800");
-                e.target.className = "level-btn py-3 rounded-xl border border-slate-100 dark:border-slate-700 font-bold text-xs bg-indigo-600 text-white shadow-lg shadow-indigo-500/30";
+                document.querySelectorAll('.level-btn').forEach(b => b.className = "level-btn py-3 rounded-xl border border-slate-100 dark:border-slate-700 font-bold text-xs hover:bg-slate-800 transition-all");
+                e.target.className = "level-btn py-3 rounded-xl border border-slate-100 dark:border-slate-700 font-bold text-xs bg-indigo-600 text-white shadow-lg shadow-indigo-500/30 transition-all";
                 selectedLevel = e.target.dataset.level;
             };
         });
 
-        // Analiz Kaydetme
+        // Analiz Kaydetme (Firestore)
         scanBtn.onclick = async () => {
-            if (!currentFile || !user || !db) return;
+            if (!currentFile || !user) return;
 
             scanBtn.disabled = true;
-            scanBtn.innerHTML = `<div class="loader"></div> <span>İŞLENİYOR...</span>`;
+            scanBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> <span>ANALİZ EDİLİYOR...</span>`;
 
             const mockWords = generateMockWords(selectedLevel);
 
             try {
-                await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'scans'), {
+                // Rule 1: /artifacts/{appId}/users/{userId}/{collectionName}
+                const scanCol = collection(db, 'artifacts', appId, 'users', user.uid, 'scans');
+                await addDoc(scanCol, {
                     fileName: currentFile.name,
                     level: selectedLevel,
                     wordCount: mockWords.length,
                     words: mockWords,
                     timestamp: Date.now()
                 });
+                
                 renderResults(mockWords, selectedLevel);
                 document.getElementById('syncStatus').classList.remove('hidden');
+                setTimeout(() => document.getElementById('syncStatus').classList.add('hidden'), 3000);
             } catch (err) {
-                console.error("Firestore Yazma Hatası:", err);
+                console.error("Yazma Hatası:", err);
             } finally {
                 scanBtn.disabled = false;
                 scanBtn.innerHTML = `<span>BULUT ANALİZİNİ BAŞLAT</span> <i class="fa-solid fa-bolt"></i>`;
             }
         };
 
-        // Özel Geçmiş Dinleme
-        function loadPrivateHistory(uid, appId) {
-            if (!db) return;
+        // Geçmişi Dinle (Realtime)
+        function loadHistory(uid) {
+            if (unsubscribeHistory) unsubscribeHistory();
+            
             const q = collection(db, 'artifacts', appId, 'users', uid, 'scans');
             
             unsubscribeHistory = onSnapshot(q, (snapshot) => {
                 historyList.innerHTML = '';
-                const docs = [];
-                snapshot.forEach(doc => docs.push({id: doc.id, ...doc.data()}));
-                docs.sort((a, b) => b.timestamp - a.timestamp);
+                let scans = [];
+                snapshot.forEach(doc => scans.push(doc.data()));
+                
+                // Rule 2: In-memory sorting
+                scans.sort((a, b) => b.timestamp - a.timestamp);
 
-                if (docs.length === 0) {
-                    historyList.innerHTML = `<p class="text-[10px] text-slate-500 italic text-center py-6">Geçmişiniz henüz temiz.</p>`;
+                if (scans.length === 0) {
+                    historyList.innerHTML = `<p class="text-xs text-slate-500 text-center py-4">Henüz analiz yok.</p>`;
                     return;
                 }
 
-                docs.forEach(data => {
+                scans.forEach(data => {
                     const item = document.createElement('div');
-                    item.className = "p-4 bg-slate-800/40 border border-slate-700/50 rounded-2xl flex justify-between items-center cursor-pointer hover:bg-indigo-600/10 hover:border-indigo-500/50 transition-all";
+                    item.className = "p-4 bg-slate-800/40 border border-slate-700/50 rounded-2xl flex justify-between items-center cursor-pointer hover:bg-indigo-600/10 transition-all";
                     item.innerHTML = `
-                        <div class="overflow-hidden">
-                            <p class="text-[9px] font-black text-indigo-400 uppercase tracking-widest">${data.level}</p>
-                            <p class="text-xs font-bold text-slate-300 truncate w-32">${data.fileName}</p>
+                        <div class="truncate pr-2">
+                            <p class="text-[9px] font-black text-indigo-400">${data.level}</p>
+                            <p class="text-xs font-bold text-slate-300 truncate">${data.fileName}</p>
                         </div>
-                        <span class="text-[9px] font-bold bg-slate-700 px-2 py-1 rounded text-slate-400">${data.wordCount} Kelime</span>
+                        <span class="text-[9px] font-bold bg-slate-700 px-2 py-1 rounded shrink-0">${data.wordCount} Kelime</span>
                     `;
                     item.onclick = () => renderResults(data.words, data.level);
                     historyList.appendChild(item);
                 });
-            }, (err) => {
-                console.error("Snapshot hatası:", err);
-                historyList.innerHTML = `<p class="text-[10px] text-red-400 text-center py-6">Veri yüklenemedi.</p>`;
-            });
+            }, (error) => console.error("Snapshot hatası:", error));
         }
 
         function renderResults(words, level) {
@@ -300,37 +276,33 @@
             document.getElementById('resultCount').textContent = `${level} ANALİZİ • ${words.length} KAYIT`;
             
             words.forEach((item, i) => {
-                const card = `
-                    <div class="bg-white dark:bg-slate-800/80 p-6 rounded-3xl border border-slate-100 dark:border-slate-700/50 shadow-sm flex gap-5 transition-all hover:scale-[1.01]">
-                        <div class="w-8 h-8 rounded-xl bg-indigo-600/10 text-indigo-500 flex items-center justify-center font-bold text-xs shrink-0 border border-indigo-500/20">${i+1}</div>
+                resultsList.insertAdjacentHTML('beforeend', `
+                    <div class="bg-white dark:bg-slate-800/80 p-6 rounded-3xl border border-slate-100 dark:border-slate-700/50 shadow-sm flex gap-5 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                        <div class="w-8 h-8 rounded-xl bg-indigo-600/10 text-indigo-500 flex items-center justify-center font-bold text-xs border border-indigo-500/20">${i+1}</div>
                         <div class="flex-1">
                             <div class="flex justify-between items-baseline mb-2">
                                 <h4 class="text-lg font-black text-slate-800 dark:text-slate-100">${item.w}</h4>
-                                <span class="text-indigo-400 font-bold text-sm tracking-tight">${item.m}</span>
+                                <span class="text-indigo-400 font-bold text-sm">${item.m}</span>
                             </div>
-                            <p class="text-sm text-slate-500 dark:text-slate-400 italic leading-relaxed">"${item.c}"</p>
+                            <p class="text-sm text-slate-500 italic leading-relaxed">"${item.c}"</p>
                         </div>
                     </div>
-                `;
-                resultsList.insertAdjacentHTML('beforeend', card);
+                `);
             });
         }
 
         function generateMockWords(level) {
-            const base = {
-                'A1': [{w:'House', m:'Ev', c:'I live in a big house.'}, {w:'Water', m:'Su', c:'Drink plenty of water.'}],
-                'B1': [{w:'Significant', m:'Önemli', c:'A significant discovery.'}, {w:'Examine', m:'İncelemek', c:'Please examine the doc.'}],
-                'C1': [{w:'Paradigm', m:'Paradigma', c:'A shift in the paradigm.'}, {w:'Inevitable', m:'Kaçınılmaz', c:'Change is inevitable.'}]
+            const data = {
+                'A1': [{w:'House', m:'Ev', c:'I live in a small house.'}, {w:'Green', m:'Yeşil', c:'The grass is green.'}],
+                'B1': [{w:'Significant', m:'Önemli', c:'A significant step forward.'}, {w:'Examine', m:'İncelemek', c:'Please examine the evidence.'}],
+                'C1': [{w:'Inevitable', m:'Kaçınılmaz', c:'Change is inevitable.'}, {w:'Ambiguous', m:'Belirsiz', c:'The laws are ambiguous.'}]
             };
-            const list = base[level] || base['B1'];
-            let final = [];
-            for(let i=0; i<25; i++) {
-                const random = list[Math.floor(Math.random()*list.length)];
-                final.push({...random, w: random.w + " " + (i+1)});
-            }
-            return final;
+            const source = data[level] || data['B1'];
+            return Array.from({length: 15}, (_, i) => {
+                const item = source[i % source.length];
+                return {...item, w: item.w + (i > 1 ? ` (${i})` : '')};
+            });
         }
-
     </script>
 </body>
 </html>
