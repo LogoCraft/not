@@ -1,1510 +1,781 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>LexiScan — Vocabulary Intelligence</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
- 
-<!-- Firebase -->
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getStorage, ref, uploadBytes, getDownloadURL, listAll } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
-  import { getFirestore, collection, addDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
- 
-  const firebaseConfig = {
-    apiKey: "AIzaSyBHyVTGfOCL_QhDm3iQSp_zkhwtDq-Pz54",
-    authDomain: "alsat-20afb.firebaseapp.com",
-    projectId: "alsat-20afb",
-    storageBucket: "alsat-20afb.firebasestorage.app",
-    messagingSenderId: "675661559230",
-    appId: "1:675661559230:web:5401e1aee6ccd775caf5ef"
-  };
- 
-  const app = initializeApp(firebaseConfig);
-  const storage = getStorage(app);
-  const db = getFirestore(app);
- 
-  window._firebase = { storage, db, ref, uploadBytes, getDownloadURL, listAll, collection, addDoc, getDocs, query, orderBy };
-</script>
- 
-<!-- PDF.js -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
- 
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SpeakUp AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Clash+Display:wght@500;700&family=Syne:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-/* ─── CSS Variables ─────────────────────────────────── */
 :root {
-  --bg: #0a0a10;
-  --surface: rgba(255,255,255,0.04);
-  --surface2: rgba(255,255,255,0.08);
-  --border: rgba(255,255,255,0.10);
-  --text: #f0ede8;
-  --text-muted: rgba(240,237,232,0.45);
-  --accent: #c8a96e;
-  --accent2: #7ec8c8;
-  --accent3: #e87c7c;
-  --glow: rgba(200,169,110,0.18);
-  --card-bg: rgba(15,15,25,0.85);
-  --input-bg: rgba(255,255,255,0.06);
-  --shadow: 0 8px 40px rgba(0,0,0,0.5);
-  --radius: 16px;
-  --radius-sm: 10px;
-  --transition: 0.3s cubic-bezier(0.4,0,0.2,1);
+  --o:#FF6B1A; --od:#C84000; --ol:#FF9050;
+  --bg:#0D0906; --s1:#181008; --s2:#201408;
+  --text:#FAF0E6; --muted:#7A5C42;
+  --err:#FF4B4B; --ok:#4CAF50;
+  --r:22px;
 }
- 
-[data-theme="light"] {
-  --bg: #f5f0e8;
-  --surface: rgba(0,0,0,0.04);
-  --surface2: rgba(0,0,0,0.07);
-  --border: rgba(0,0,0,0.10);
-  --text: #1a1612;
-  --text-muted: rgba(26,22,18,0.5);
-  --accent: #a07840;
-  --accent2: #3a8a8a;
-  --accent3: #c04040;
-  --glow: rgba(160,120,64,0.15);
-  --card-bg: rgba(245,240,232,0.92);
-  --input-bg: rgba(0,0,0,0.05);
-  --shadow: 0 8px 40px rgba(0,0,0,0.12);
-}
- 
-/* ─── Reset & Base ──────────────────────────────────── */
-*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
-html { scroll-behavior:smooth; }
-body {
-  font-family:'DM Sans',sans-serif;
-  background:var(--bg);
-  color:var(--text);
-  min-height:100vh;
-  overflow-x:hidden;
-  transition:background var(--transition), color var(--transition);
-}
- 
-/* ─── Animated Canvas Background ───────────────────── */
-#bg-canvas {
-  position:fixed;
-  inset:0;
-  z-index:0;
-  pointer-events:none;
-  opacity:0.6;
-}
- 
-/* ─── Layout ────────────────────────────────────────── */
-.app-wrap {
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{width:100%;height:100%;overflow:hidden;}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:'Syne',sans-serif;
+  display:flex; align-items:center; justify-content:center;
   position:relative;
-  z-index:1;
-  min-height:100vh;
-  display:flex;
+}
+body::before{
+  content:''; position:fixed;
+  top:-15vh; left:50%; transform:translateX(-50%);
+  width:min(700px,120vw); height:400px;
+  background:radial-gradient(ellipse,rgba(255,107,26,0.1) 0%,transparent 70%);
+  pointer-events:none; z-index:0;
+}
+
+/* ── SCREENS ── */
+.screen{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:1;transition:opacity 0.4s;}
+.screen.hidden{opacity:0;pointer-events:none;}
+
+/* ── IDLE ── */
+#idle{flex-direction:column;align-items:center;gap:32px;padding:32px;}
+.brand{font-family:'Clash Display',sans-serif;font-size:15px;letter-spacing:5px;text-transform:uppercase;color:var(--ol);opacity:0.7;}
+.tagline{font-size:14px;color:var(--muted);text-align:center;line-height:1.8;max-width:260px;}
+
+.orb{
+  width:190px;height:190px;border-radius:50%;
+  background:radial-gradient(circle at 38% 32%,#FF9050,#C84000);
+  border:none;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  box-shadow:0 0 70px rgba(255,107,26,0.4),0 10px 40px rgba(0,0,0,0.6),inset 0 2px 8px rgba(255,255,255,0.2);
+  position:relative;outline:none;
+  transition:transform 0.15s,box-shadow 0.15s;
+}
+.orb::after{content:'';position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 38% 32%,rgba(255,255,255,0.18),transparent 58%);pointer-events:none;}
+.orb:hover{transform:scale(1.05);}
+.orb:active{transform:scale(0.91);box-shadow:0 0 30px rgba(255,107,26,0.3),0 4px 16px rgba(0,0,0,0.6),inset 0 4px 12px rgba(0,0,0,0.3);}
+.orb svg{width:50px;height:50px;fill:rgba(255,255,255,0.95);}
+.orb-lbl{font-family:'Clash Display',sans-serif;font-size:13px;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,0.88);}
+
+/* ── SESSION ── */
+#session{
   flex-direction:column;
+  padding:12px 12px 12px 12px;
+  gap:10px; overflow:hidden;
+  align-items:center; justify-content:flex-start;
 }
- 
-/* ─── Header ────────────────────────────────────────── */
-header {
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  padding:24px 40px;
-  border-bottom:1px solid var(--border);
-  backdrop-filter:blur(20px);
-  background:rgba(10,10,16,0.5);
-  position:sticky;
-  top:0;
-  z-index:100;
-}
-[data-theme="light"] header { background:rgba(245,240,232,0.7); }
- 
-.logo {
-  display:flex;
-  align-items:baseline;
-  gap:8px;
-}
-.logo-word {
-  font-family:'Playfair Display',serif;
-  font-size:28px;
-  font-weight:900;
-  color:var(--accent);
-  letter-spacing:-0.5px;
-}
-.logo-tag {
-  font-family:'DM Mono',monospace;
-  font-size:11px;
-  color:var(--text-muted);
-  letter-spacing:2px;
-  text-transform:uppercase;
-}
- 
-.header-right { display:flex; align-items:center; gap:16px; }
- 
-.theme-toggle {
-  width:48px; height:28px;
-  background:var(--surface2);
-  border:1px solid var(--border);
-  border-radius:99px;
-  cursor:pointer;
-  position:relative;
-  transition:background var(--transition);
+
+.topbar{
+  width:100%;max-width:780px;
+  display:flex;align-items:center;justify-content:space-between;
   flex-shrink:0;
 }
-.theme-toggle::after {
-  content:'';
-  position:absolute;
-  top:3px; left:3px;
-  width:20px; height:20px;
-  border-radius:50%;
-  background:var(--accent);
-  transition:transform var(--transition);
+.topbar-brand{font-family:'Clash Display',sans-serif;font-size:19px;color:var(--o);letter-spacing:1px;}
+.topbar-right{display:flex;align-items:center;gap:8px;}
+
+.icon-btn{
+  width:36px;height:36px;border-radius:50%;
+  background:var(--s1);border:1px solid rgba(255,107,26,0.2);
+  color:var(--muted);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:all 0.2s;font-size:15px;
 }
-[data-theme="light"] .theme-toggle::after { transform:translateX(20px); }
- 
-.lib-btn {
-  display:flex; align-items:center; gap:8px;
-  padding:8px 18px;
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:99px;
-  color:var(--text);
-  font-family:'DM Sans',sans-serif;
-  font-size:14px;
-  cursor:pointer;
-  transition:all var(--transition);
+.icon-btn:hover{color:var(--text);border-color:var(--o);}
+.topic-pill{
+  background:rgba(255,107,26,0.1);border:1px solid rgba(255,107,26,0.25);
+  color:var(--ol);padding:6px 13px;border-radius:20px;
+  font-size:12px;font-weight:700;letter-spacing:0.3px;
+  cursor:pointer;transition:all 0.2s;
 }
-.lib-btn:hover { background:var(--surface2); border-color:var(--accent); color:var(--accent); }
-.lib-btn svg { width:16px; height:16px; }
- 
-/* ─── Main ──────────────────────────────────────────── */
-main {
-  flex:1;
-  max-width:960px;
-  width:100%;
-  margin:0 auto;
-  padding:60px 24px 80px;
-}
- 
-/* ─── Hero ──────────────────────────────────────────── */
-.hero {
-  text-align:center;
-  margin-bottom:56px;
-  animation:fadeUp 0.8s ease both;
-}
-.hero-eyebrow {
-  font-family:'DM Mono',monospace;
-  font-size:11px;
-  letter-spacing:3px;
-  text-transform:uppercase;
-  color:var(--accent);
-  margin-bottom:16px;
-}
-.hero h1 {
-  font-family:'Playfair Display',serif;
-  font-size:clamp(36px,6vw,68px);
-  font-weight:900;
-  line-height:1.05;
-  letter-spacing:-2px;
-  margin-bottom:16px;
-}
-.hero h1 span { color:var(--accent); }
-.hero p {
-  font-size:17px;
-  color:var(--text-muted);
-  max-width:500px;
-  margin:0 auto;
-  line-height:1.6;
-}
- 
-/* ─── Card ──────────────────────────────────────────── */
-.card {
-  background:var(--card-bg);
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-  backdrop-filter:blur(24px);
-  box-shadow:var(--shadow);
-  padding:36px;
-  animation:fadeUp 0.8s ease both;
-}
-.card + .card { margin-top:24px; }
- 
-.card-title {
-  font-family:'Playfair Display',serif;
-  font-size:20px;
-  font-weight:700;
-  margin-bottom:24px;
-  display:flex;
-  align-items:center;
-  gap:10px;
-}
-.card-title .num {
-  width:28px; height:28px;
-  border-radius:50%;
-  background:var(--accent);
-  color:#0a0a10;
-  font-family:'DM Mono',monospace;
-  font-size:13px;
-  font-weight:500;
-  display:flex; align-items:center; justify-content:center;
-  flex-shrink:0;
-}
- 
-/* ─── Upload Zone ───────────────────────────────────── */
-.upload-zone {
-  border:2px dashed var(--border);
-  border-radius:var(--radius-sm);
-  padding:48px 24px;
-  text-align:center;
-  cursor:pointer;
-  transition:all var(--transition);
-  position:relative;
-  overflow:hidden;
-  background:var(--input-bg);
-}
-.upload-zone:hover, .upload-zone.drag-over {
-  border-color:var(--accent);
-  background:var(--glow);
-}
-.upload-zone input[type=file] {
-  position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%;
-}
-.upload-icon {
-  width:56px; height:56px;
-  margin:0 auto 16px;
-  background:var(--surface2);
-  border-radius:50%;
-  display:flex; align-items:center; justify-content:center;
-  border:1px solid var(--border);
-}
-.upload-icon svg { width:24px; height:24px; color:var(--accent); }
-.upload-zone h3 { font-size:16px; font-weight:600; margin-bottom:6px; }
-.upload-zone p { font-size:13px; color:var(--text-muted); }
-.upload-zone .file-types {
-  display:flex; gap:8px; justify-content:center; margin-top:16px;
-}
-.file-tag {
-  font-family:'DM Mono',monospace;
-  font-size:11px;
-  padding:4px 10px;
-  border-radius:99px;
-  background:var(--surface2);
-  border:1px solid var(--border);
-  color:var(--text-muted);
-}
-.file-preview {
-  margin-top:16px;
-  padding:12px 16px;
-  background:var(--surface2);
-  border-radius:var(--radius-sm);
-  display:flex;
-  align-items:center;
-  gap:12px;
-  font-size:14px;
-}
-.file-preview svg { color:var(--accent); width:20px; height:20px; flex-shrink:0; }
- 
-/* ─── Form Controls ─────────────────────────────────── */
-.form-row { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
-@media(max-width:600px){ .form-row { grid-template-columns:1fr; } }
- 
-.form-group { display:flex; flex-direction:column; gap:8px; }
-.form-group label {
-  font-size:12px;
-  font-weight:600;
-  letter-spacing:1px;
-  text-transform:uppercase;
-  color:var(--text-muted);
-}
-.form-group input, .form-group select {
-  padding:12px 16px;
-  background:var(--input-bg);
-  border:1px solid var(--border);
-  border-radius:var(--radius-sm);
-  color:var(--text);
-  font-family:'DM Sans',sans-serif;
-  font-size:15px;
-  outline:none;
-  transition:border-color var(--transition), background var(--transition);
-  -webkit-appearance:none;
-}
-.form-group input:focus, .form-group select:focus {
-  border-color:var(--accent);
-  background:var(--glow);
-}
-.form-group select option { background:var(--bg); }
- 
-/* Level Selector */
-.level-grid {
+.topic-pill:hover{background:rgba(255,107,26,0.18);}
+
+/* GRID */
+.grid{
+  width:100%;max-width:780px;
   display:grid;
-  grid-template-columns:repeat(6,1fr);
-  gap:10px;
+  grid-template-columns:1fr 260px;
+  grid-template-rows:1fr auto;
+  gap:10px;flex:1;min-height:0;
 }
-@media(max-width:600px){ .level-grid { grid-template-columns:repeat(3,1fr); } }
- 
-.level-btn {
-  padding:12px 8px;
-  border-radius:var(--radius-sm);
-  border:1px solid var(--border);
-  background:var(--input-bg);
-  color:var(--text-muted);
-  font-family:'DM Mono',monospace;
-  font-size:14px;
-  font-weight:500;
-  cursor:pointer;
-  transition:all var(--transition);
-  text-align:center;
+
+/* AI panel */
+.ai-panel{
+  grid-column:1;grid-row:1;
+  background:var(--s1);border:1px solid rgba(255,107,26,0.1);
+  border-radius:var(--r);padding:20px;
+  display:flex;flex-direction:column;gap:12px;overflow:hidden;
 }
-.level-btn:hover { border-color:var(--accent); color:var(--accent); }
-.level-btn.active {
-  background:var(--accent);
-  border-color:var(--accent);
-  color:#0a0a10;
-  font-weight:700;
-  box-shadow:0 0 24px var(--glow);
+.plabel{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);}
+.ai-text{
+  font-size:15px;line-height:1.8;color:var(--text);
+  flex:1;overflow-y:auto;scrollbar-width:none;
 }
- 
-.level-desc {
-  margin-top:12px;
-  padding:10px 14px;
-  background:var(--surface);
-  border-radius:var(--radius-sm);
-  font-size:13px;
-  color:var(--text-muted);
-  border-left:3px solid var(--accent);
+.ai-text::-webkit-scrollbar{display:none;}
+
+.think{display:none;gap:5px;align-items:center;}
+.think span{width:6px;height:6px;border-radius:50%;background:var(--o);animation:db 1.2s ease-in-out infinite;}
+.think span:nth-child(2){animation-delay:.2s}.think span:nth-child(3){animation-delay:.4s}
+@keyframes db{0%,80%,100%{transform:scale(0.7);opacity:.3}40%{transform:scale(1.2);opacity:1}}
+
+.user-area{
+  background:rgba(255,107,26,0.04);border:1px solid rgba(255,107,26,0.08);
+  border-radius:14px;padding:12px;flex-shrink:0;
+}
+.user-said{font-size:13px;color:var(--muted);font-style:italic;line-height:1.6;min-height:20px;}
+
+/* MIC panel */
+.mic-panel{
+  grid-column:1;grid-row:2;
+  background:var(--s1);border:1px solid rgba(255,107,26,0.1);
+  border-radius:var(--r);padding:16px 20px;
+  display:flex;align-items:center;gap:14px;flex-shrink:0;
+}
+
+.big-mic{
+  width:70px;height:70px;border-radius:50%;flex-shrink:0;
+  background:radial-gradient(circle at 38% 32%,#FF9050,#C84000);
+  border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 5px 24px rgba(255,107,26,0.4),inset 0 2px 5px rgba(255,255,255,0.18);
+  position:relative;outline:none;transition:transform 0.12s,box-shadow 0.12s;
+}
+.big-mic::after{content:'';position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 38% 32%,rgba(255,255,255,0.2),transparent 58%);pointer-events:none;}
+.big-mic:hover{transform:scale(1.07);}
+.big-mic:active{transform:scale(0.9);}
+.big-mic.listening{animation:mpulse 1.2s ease-in-out infinite;}
+@keyframes mpulse{0%{box-shadow:0 0 0 0 rgba(255,107,26,0.6),0 5px 24px rgba(255,107,26,0.4)}65%{box-shadow:0 0 0 22px rgba(255,107,26,0),0 5px 24px rgba(255,107,26,0.4)}100%{box-shadow:0 0 0 0 rgba(255,107,26,0),0 5px 24px rgba(255,107,26,0.4)}}
+.big-mic svg{width:30px;height:30px;fill:white;}
+
+.mic-right{flex:1;display:flex;flex-direction:column;gap:8px;}
+.status-row{display:flex;align-items:center;gap:8px;}
+.sdot{width:8px;height:8px;border-radius:50%;background:var(--muted);transition:all .3s;flex-shrink:0;}
+.sdot.l{background:var(--o);box-shadow:0 0 6px var(--o);animation:blink 1s infinite;}
+.sdot.t{background:#FFC107;box-shadow:0 0 6px #FFC107;}
+.sdot.s{background:var(--ok);box-shadow:0 0 6px var(--ok);}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.stext{font-size:12px;color:var(--muted);}
+.waveform{display:none;align-items:center;gap:3px;height:18px;}
+.wb{width:3px;border-radius:2px;background:var(--o);height:3px;}
+.wb.a{animation:wv .7s ease-in-out infinite;}
+.wb:nth-child(2).a{animation-delay:.12s}.wb:nth-child(3).a{animation-delay:.24s}
+.wb:nth-child(4).a{animation-delay:.12s}.wb:nth-child(5).a{animation-delay:.24s}
+@keyframes wv{0%,100%{height:3px}50%{height:17px}}
+.mic-hint{font-size:11px;color:var(--muted);}
+
+.text-row{display:flex;gap:8px;align-items:center;}
+.txt-in{
+  flex:1;background:var(--s2);border:1px solid rgba(255,107,26,0.15);
+  border-radius:14px;padding:10px 14px;
+  color:var(--text);font-family:'Syne',sans-serif;font-size:13px;
+  outline:none;transition:border-color .2s;
+}
+.txt-in::placeholder{color:var(--muted);}
+.txt-in:focus{border-color:var(--o);}
+.send-btn{
+  width:42px;height:42px;border-radius:50%;
+  background:var(--s2);border:1px solid rgba(255,107,26,0.2);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all .2s;flex-shrink:0;
+}
+.send-btn:hover{background:rgba(255,107,26,0.12);border-color:var(--o);}
+.send-btn svg{width:18px;height:18px;fill:var(--o);}
+
+/* RIGHT PANEL */
+.right-panel{
+  grid-column:2;grid-row:1/3;
+  display:flex;flex-direction:column;gap:10px;overflow:hidden;
+}
+.panel-card{
+  background:var(--s1);border:1px solid rgba(255,107,26,0.1);
+  border-radius:var(--r);padding:16px;flex-shrink:0;
+}
+
+.scores{display:flex;justify-content:space-between;}
+.sc-item{text-align:center;}
+.sc-num{font-family:'Clash Display',sans-serif;font-size:26px;font-weight:700;color:var(--o);}
+.sc-lbl{font-size:10px;color:var(--muted);letter-spacing:.5px;}
+
+.topic-row{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.topic-name{font-size:13px;color:var(--text);font-weight:500;}
+.next-btn{
+  background:none;border:1px solid rgba(255,107,26,0.25);
+  color:var(--ol);padding:4px 12px;border-radius:12px;
+  font-size:11px;font-weight:700;cursor:pointer;font-family:'Syne',sans-serif;
+  transition:all .2s;white-space:nowrap;
+}
+.next-btn:hover{background:rgba(255,107,26,0.12);}
+
+.err-scroll{flex:1;overflow-y:auto;min-height:0;scrollbar-width:thin;scrollbar-color:rgba(255,107,26,0.2) transparent;}
+.no-err{color:var(--muted);font-size:12px;text-align:center;padding:28px 0;line-height:1.8;}
+.err-card{
+  background:rgba(255,75,75,0.06);border:1px solid rgba(255,75,75,0.22);
+  border-radius:14px;padding:12px;margin-bottom:8px;
+  animation:slideIn .35s ease;
+}
+@keyframes slideIn{from{opacity:0;transform:translateX(12px)}to{opacity:1;transform:translateX(0)}}
+.err-type{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--err);margin-bottom:5px;}
+.err-wrong{font-size:12px;color:var(--err);text-decoration:line-through;margin-bottom:3px;}
+.err-right{font-size:12px;color:var(--ok);font-weight:700;margin-bottom:5px;}
+.err-tip{font-size:11px;color:var(--muted);line-height:1.5;}
+
+.tip-card{
+  background:rgba(255,107,26,0.05);border:1px solid rgba(255,107,26,0.18);
+  border-radius:16px;padding:14px 16px;flex-shrink:0;
+}
+.tip-title{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--ol);margin-bottom:6px;}
+.tip-body{font-size:12px;color:var(--muted);line-height:1.7;transition:opacity .4s;}
+
+/* ── SETTINGS MODAL ── */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.75);
+  z-index:100;display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .3s;
+}
+.modal-overlay.open{opacity:1;pointer-events:all;}
+.modal{
+  background:var(--s1);border:1px solid rgba(255,107,26,0.2);
+  border-radius:24px;padding:24px;width:min(380px,94vw);
+  transform:translateY(20px);transition:transform .3s;
+}
+.modal-overlay.open .modal{transform:translateY(0);}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
+.modal-title{font-family:'Clash Display',sans-serif;font-size:18px;color:var(--text);}
+.close-modal{background:none;border:none;color:var(--muted);cursor:pointer;font-size:20px;line-height:1;padding:4px;}
+.close-modal:hover{color:var(--text);}
+.setting-row{margin-bottom:18px;}
+.setting-lbl{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+.setting-btns{display:flex;gap:6px;flex-wrap:wrap;}
+.s-btn{
+  padding:7px 14px;border-radius:12px;font-size:12px;font-weight:700;
+  background:var(--s2);border:1px solid rgba(255,107,26,0.15);
+  color:var(--muted);cursor:pointer;font-family:'Syne',sans-serif;transition:all .2s;
+}
+.s-btn.active{background:rgba(255,107,26,0.18);border-color:var(--o);color:var(--ol);}
+
+/* ── FIREFOX NOTICE ── */
+.ff-notice{
+  background:rgba(255,193,7,0.08);border:1px solid rgba(255,193,7,0.25);
+  border-radius:12px;padding:10px 14px;font-size:12px;color:#FFC107;line-height:1.6;
   display:none;
 }
-.level-desc.show { display:block; }
- 
-/* ─── Scan Button ───────────────────────────────────── */
-.scan-btn {
-  width:100%;
-  padding:18px;
-  background:linear-gradient(135deg, var(--accent), #e8b96e);
-  border:none;
-  border-radius:var(--radius-sm);
-  color:#0a0a10;
-  font-family:'DM Sans',sans-serif;
-  font-size:16px;
-  font-weight:700;
-  cursor:pointer;
-  transition:all var(--transition);
-  letter-spacing:0.5px;
-  position:relative;
-  overflow:hidden;
-  margin-top:8px;
+
+/* ── MOBILE ── */
+@media(max-width:620px){
+  #session{padding:10px 10px 10px 10px;}
+  .grid{
+    grid-template-columns:1fr;
+    grid-template-rows:auto auto 1fr;
+    overflow-y:auto;scrollbar-width:none;
+  }
+  .grid::-webkit-scrollbar{display:none;}
+  .ai-panel{grid-column:1;grid-row:1;min-height:150px;max-height:220px;}
+  .mic-panel{grid-column:1;grid-row:2;}
+  .right-panel{
+    grid-column:1;grid-row:3;
+    flex-direction:row;flex-wrap:wrap;
+    gap:8px;overflow:visible;
+  }
+  .panel-card{flex:1;min-width:130px;}
+  .panel-card.err-panel{width:100%;flex:none;}
+  .err-scroll{max-height:160px;}
+  .tip-card{width:100%;}
+  .sc-num{font-size:22px;}
+  .big-mic{width:60px;height:60px;}
+  .big-mic svg{width:26px;height:26px;}
+  .right-panel .panel-card:last-child{order:10;}
 }
-.scan-btn::after {
-  content:'';
-  position:absolute;
-  inset:0;
-  background:rgba(255,255,255,0.15);
-  opacity:0;
-  transition:opacity var(--transition);
-}
-.scan-btn:hover::after { opacity:1; }
-.scan-btn:hover { transform:translateY(-2px); box-shadow:0 8px 32px var(--glow); }
-.scan-btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
-.scan-btn .btn-inner { display:flex; align-items:center; justify-content:center; gap:10px; }
- 
-/* ─── Progress ──────────────────────────────────────── */
-.progress-wrap {
-  display:none;
-  flex-direction:column;
-  gap:10px;
-  margin-top:20px;
-}
-.progress-wrap.show { display:flex; }
-.progress-label { font-size:13px; color:var(--text-muted); display:flex; justify-content:space-between; }
-.progress-bar-bg {
-  height:6px;
-  background:var(--surface2);
-  border-radius:99px;
-  overflow:hidden;
-}
-.progress-bar {
-  height:100%;
-  background:linear-gradient(90deg, var(--accent), var(--accent2));
-  border-radius:99px;
-  width:0%;
-  transition:width 0.4s ease;
-}
- 
-/* ─── Results ───────────────────────────────────────── */
-.results-section {
-  animation:fadeUp 0.6s ease both;
-  display:none;
-}
-.results-section.show { display:block; }
- 
-.results-header {
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  flex-wrap:wrap;
-  gap:16px;
-  margin-bottom:24px;
-}
-.results-stats {
-  display:flex;
-  gap:24px;
-  flex-wrap:wrap;
-}
-.stat {
-  display:flex;
-  flex-direction:column;
-  gap:2px;
-}
-.stat-value {
-  font-family:'Playfair Display',serif;
-  font-size:32px;
-  font-weight:900;
-  color:var(--accent);
-  line-height:1;
-}
-.stat-label {
-  font-size:11px;
-  text-transform:uppercase;
-  letter-spacing:1.5px;
-  color:var(--text-muted);
-}
- 
-.results-actions { display:flex; gap:10px; flex-wrap:wrap; }
-.action-btn {
-  display:flex; align-items:center; gap:8px;
-  padding:9px 18px;
-  border-radius:99px;
-  border:1px solid var(--border);
-  background:var(--surface);
-  color:var(--text);
-  font-size:13px;
-  cursor:pointer;
-  transition:all var(--transition);
-  font-family:'DM Sans',sans-serif;
-}
-.action-btn:hover { border-color:var(--accent); color:var(--accent); }
-.action-btn svg { width:15px; height:15px; }
- 
-/* Filter bar */
-.filter-bar {
-  display:flex;
-  align-items:center;
-  gap:12px;
-  margin-bottom:20px;
-  flex-wrap:wrap;
-}
-.search-input {
-  flex:1;
-  min-width:200px;
-  padding:10px 16px;
-  background:var(--input-bg);
-  border:1px solid var(--border);
-  border-radius:99px;
-  color:var(--text);
-  font-size:14px;
-  font-family:'DM Sans',sans-serif;
-  outline:none;
-  transition:border-color var(--transition);
-}
-.search-input:focus { border-color:var(--accent); }
-.sort-select {
-  padding:9px 14px;
-  background:var(--input-bg);
-  border:1px solid var(--border);
-  border-radius:99px;
-  color:var(--text);
-  font-size:13px;
-  font-family:'DM Mono',monospace;
-  outline:none;
-  cursor:pointer;
-}
-.sort-select option { background:var(--bg); }
- 
-/* Word Grid */
-.word-grid {
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
-  gap:12px;
-  max-height:520px;
-  overflow-y:auto;
-  padding-right:4px;
-}
-.word-grid::-webkit-scrollbar { width:4px; }
-.word-grid::-webkit-scrollbar-track { background:transparent; }
-.word-grid::-webkit-scrollbar-thumb { background:var(--border); border-radius:99px; }
- 
-.word-card {
-  padding:14px 16px;
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:var(--radius-sm);
-  cursor:pointer;
-  transition:all var(--transition);
-  position:relative;
-  overflow:hidden;
-}
-.word-card::before {
-  content:'';
-  position:absolute;
-  left:0; top:0; bottom:0;
-  width:3px;
-  background:var(--accent);
-  transform:scaleY(0);
-  transition:transform var(--transition);
-}
-.word-card:hover { border-color:var(--accent); transform:translateY(-2px); background:var(--surface2); }
-.word-card:hover::before { transform:scaleY(1); }
- 
-.word-text {
-  font-family:'DM Mono',monospace;
-  font-size:15px;
-  font-weight:500;
-  color:var(--text);
-  margin-bottom:4px;
-  word-break:break-word;
-}
-.word-count {
-  font-size:11px;
-  color:var(--text-muted);
-}
- 
-/* ─── Library Modal ─────────────────────────────────── */
-.modal-overlay {
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,0.7);
-  backdrop-filter:blur(8px);
-  z-index:200;
-  display:none;
-  align-items:center;
-  justify-content:center;
-  padding:24px;
-}
-.modal-overlay.show { display:flex; }
- 
-.modal {
-  background:var(--card-bg);
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-  backdrop-filter:blur(24px);
-  width:100%;
-  max-width:600px;
-  max-height:80vh;
-  display:flex;
-  flex-direction:column;
-  box-shadow:var(--shadow);
-  animation:modalIn 0.3s ease both;
-}
-@keyframes modalIn {
-  from { transform:scale(0.95) translateY(20px); opacity:0; }
-  to { transform:none; opacity:1; }
-}
-.modal-head {
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  padding:24px 28px;
-  border-bottom:1px solid var(--border);
-}
-.modal-head h2 { font-family:'Playfair Display',serif; font-size:22px; }
-.modal-close {
-  width:34px; height:34px;
-  border-radius:50%;
-  border:1px solid var(--border);
-  background:var(--surface);
-  color:var(--text);
-  cursor:pointer;
-  display:flex; align-items:center; justify-content:center;
-  transition:all var(--transition);
-}
-.modal-close:hover { border-color:var(--accent3); color:var(--accent3); }
- 
-.modal-body { padding:24px 28px; overflow-y:auto; flex:1; }
- 
-.upload-to-lib {
-  display:flex;
-  gap:12px;
-  margin-bottom:24px;
-}
-.upload-to-lib input {
-  flex:1;
-  padding:10px 14px;
-  background:var(--input-bg);
-  border:1px solid var(--border);
-  border-radius:var(--radius-sm);
-  color:var(--text);
-  font-size:14px;
-  font-family:'DM Sans',sans-serif;
-  outline:none;
-}
-.upload-to-lib input:focus { border-color:var(--accent); }
-.upload-lib-btn {
-  padding:10px 20px;
-  background:var(--accent);
-  border:none;
-  border-radius:var(--radius-sm);
-  color:#0a0a10;
-  font-weight:600;
-  font-size:14px;
-  cursor:pointer;
-  transition:all var(--transition);
-  white-space:nowrap;
-  font-family:'DM Sans',sans-serif;
-}
-.upload-lib-btn:hover { opacity:0.9; }
- 
-.lib-list { display:flex; flex-direction:column; gap:10px; }
-.lib-item {
-  display:flex;
-  align-items:center;
-  gap:14px;
-  padding:14px 16px;
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:var(--radius-sm);
-  transition:all var(--transition);
-  cursor:pointer;
-}
-.lib-item:hover { border-color:var(--accent); background:var(--surface2); }
-.lib-item-icon {
-  width:36px; height:36px;
-  background:var(--surface2);
-  border-radius:8px;
-  display:flex; align-items:center; justify-content:center;
-  flex-shrink:0;
-}
-.lib-item-icon svg { width:18px; height:18px; color:var(--accent); }
-.lib-item-info { flex:1; min-width:0; }
-.lib-item-name { font-size:14px; font-weight:500; truncate; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.lib-item-meta { font-size:12px; color:var(--text-muted); margin-top:2px; }
-.lib-item-use {
-  padding:6px 14px;
-  border-radius:99px;
-  border:1px solid var(--border);
-  background:transparent;
-  color:var(--text-muted);
-  font-size:12px;
-  cursor:pointer;
-  transition:all var(--transition);
-  font-family:'DM Sans',sans-serif;
-  flex-shrink:0;
-}
-.lib-item-use:hover { border-color:var(--accent); color:var(--accent); }
- 
-.empty-lib {
-  text-align:center;
-  padding:40px;
-  color:var(--text-muted);
-  font-size:14px;
-}
- 
-/* ─── Toast ─────────────────────────────────────────── */
-.toast-container {
-  position:fixed;
-  bottom:32px;
-  right:32px;
-  z-index:300;
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-}
-.toast {
-  padding:14px 20px;
-  background:var(--card-bg);
-  border:1px solid var(--border);
-  border-radius:var(--radius-sm);
-  backdrop-filter:blur(20px);
-  font-size:14px;
-  box-shadow:var(--shadow);
-  animation:toastIn 0.3s ease;
-  display:flex;
-  align-items:center;
-  gap:10px;
-}
-.toast.success { border-color:var(--accent2); }
-.toast.error { border-color:var(--accent3); }
-@keyframes toastIn { from { transform:translateX(100%); opacity:0; } to { transform:none; opacity:1; } }
-@keyframes toastOut { to { transform:translateX(120%); opacity:0; } }
- 
-/* ─── Animations ────────────────────────────────────── */
-@keyframes fadeUp {
-  from { opacity:0; transform:translateY(24px); }
-  to { opacity:1; transform:none; }
-}
- 
-/* stagger cards */
-.card:nth-child(1) { animation-delay:0.1s; }
-.card:nth-child(2) { animation-delay:0.2s; }
-.card:nth-child(3) { animation-delay:0.3s; }
- 
-/* Spinner */
-.spinner {
-  width:18px; height:18px;
-  border:2px solid rgba(10,10,16,0.3);
-  border-top-color:#0a0a10;
-  border-radius:50%;
-  animation:spin 0.8s linear infinite;
-  display:none;
-}
-.spinner.show { display:block; }
-@keyframes spin { to { transform:rotate(360deg); } }
- 
-/* Word detail tooltip */
-.word-tooltip {
-  position:fixed;
-  background:var(--card-bg);
-  border:1px solid var(--border);
-  border-radius:var(--radius-sm);
-  padding:16px;
-  font-size:13px;
-  max-width:240px;
-  box-shadow:var(--shadow);
-  z-index:150;
-  display:none;
-  backdrop-filter:blur(20px);
-  pointer-events:none;
-}
-.word-tooltip .wt-word { font-family:'Playfair Display',serif; font-size:18px; font-weight:700; margin-bottom:4px; }
-.word-tooltip .wt-level { font-family:'DM Mono',monospace; font-size:11px; color:var(--accent); }
- 
-/* Responsive */
-@media(max-width:640px){
-  header { padding:16px 20px; }
-  main { padding:40px 16px 60px; }
-  .card { padding:24px; }
-  .word-grid { grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); }
-}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
 </style>
 </head>
 <body>
-<canvas id="bg-canvas"></canvas>
- 
-<div class="app-wrap">
-<!-- Header -->
-<header>
-  <div class="logo">
-    <span class="logo-word">LexiScan</span>
-    <span class="logo-tag">Vocabulary Intelligence</span>
-  </div>
-  <div class="header-right">
-    <button class="lib-btn" id="libBtn">
-      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-      Library
+
+<!-- ══ IDLE ══ -->
+<div class="screen" id="idle">
+  <div style="display:flex;flex-direction:column;align-items:center;gap:28px;animation:fadeUp .6s ease">
+    <span class="brand">SpeakUp AI</span>
+    <button class="orb" onclick="startSession()">
+      <svg viewBox="0 0 24 24"><path d="M12 1a4 4 0 0 1 4 4v6a4 4 0 0 1-8 0V5a4 4 0 0 1 4-4zm6 9a1 1 0 0 1 2 0 8 8 0 0 1-7 7.93V20h2a1 1 0 0 1 0 2H9a1 1 0 0 1 0-2h2v-2.07A8 8 0 0 1 4 10a1 1 0 0 1 2 0 6 6 0 0 0 12 0z"/></svg>
+      <span class="orb-lbl">Start</span>
     </button>
-    <button class="theme-toggle" id="themeToggle" title="Toggle theme"></button>
+    <p class="tagline">AI-powered English speaking coach.<br>Press to begin your session.</p>
   </div>
-</header>
- 
-<!-- Main -->
-<main>
-  <!-- Hero -->
-  <div class="hero">
-    <div class="hero-eyebrow">AI-Powered · CEFR Analysis</div>
-    <h1>Scan Any Text.<br><span>Master Every Level.</span></h1>
-    <p>Upload a book, document, or photo. Choose a CEFR level. Instantly discover every vocabulary word from that level.</p>
-  </div>
- 
-  <!-- Step 1: Upload -->
-  <div class="card">
-    <div class="card-title">
-      <span class="num">1</span>
-      Upload Your Document
-    </div>
- 
-    <div class="upload-zone" id="uploadZone">
-      <input type="file" id="fileInput" accept=".pdf,image/*" />
-      <div class="upload-icon">
-        <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-          <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><polyline points="7 9 12 4 17 9"/><line x1="12" y1="4" x2="12" y2="16"/>
-        </svg>
-      </div>
-      <h3>Drop your file here</h3>
-      <p>or click to browse your device</p>
-      <div class="file-types">
-        <span class="file-tag">PDF</span>
-        <span class="file-tag">JPG</span>
-        <span class="file-tag">PNG</span>
-        <span class="file-tag">WEBP</span>
-      </div>
-    </div>
-    <div id="filePreview" class="file-preview" style="display:none">
-      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-      <span id="filePreviewName">—</span>
-    </div>
-  </div>
- 
-  <!-- Step 2: Options -->
-  <div class="card">
-    <div class="card-title">
-      <span class="num">2</span>
-      Scan Settings
-    </div>
- 
-    <div id="pageRangeSection" style="margin-bottom:24px;">
-      <div class="form-row">
-        <div class="form-group">
-          <label>Start Page</label>
-          <input type="number" id="startPage" min="1" value="1" placeholder="e.g. 1"/>
-        </div>
-        <div class="form-group">
-          <label>End Page</label>
-          <input type="number" id="endPage" min="1" value="" placeholder="e.g. 50"/>
-        </div>
-      </div>
-      <p id="pdfPageCount" style="font-size:12px;color:var(--text-muted);margin-top:8px;"></p>
-    </div>
- 
-    <div style="margin-bottom:8px">
-      <div class="form-group" style="margin-bottom:16px">
-        <label>CEFR Level</label>
-      </div>
-      <div class="level-grid">
-        <button class="level-btn" data-level="A1">A1</button>
-        <button class="level-btn" data-level="A2">A2</button>
-        <button class="level-btn active" data-level="B1">B1</button>
-        <button class="level-btn" data-level="B2">B2</button>
-        <button class="level-btn" data-level="C1">C1</button>
-        <button class="level-btn" data-level="C2">C2</button>
-      </div>
-      <div class="level-desc show" id="levelDesc">
-        <strong>B1 — Intermediate:</strong> Threshold level. Can understand the main points of clear standard input on familiar matters. ~2,000–3,500 word families.
-      </div>
-    </div>
- 
-    <div class="progress-wrap" id="progressWrap">
-      <div class="progress-label">
-        <span id="progressText">Extracting text...</span>
-        <span id="progressPct">0%</span>
-      </div>
-      <div class="progress-bar-bg"><div class="progress-bar" id="progressBar"></div></div>
-    </div>
- 
-    <button class="scan-btn" id="scanBtn" style="margin-top:24px">
-      <div class="btn-inner">
-        <div class="spinner" id="spinner"></div>
-        <svg id="scanIcon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <span id="scanLabel">Scan Document</span>
-      </div>
-    </button>
-  </div>
- 
-  <!-- Results -->
-  <div class="card results-section" id="resultsSection">
-    <div class="results-header">
-      <div class="results-stats">
-        <div class="stat">
-          <div class="stat-value" id="statWords">0</div>
-          <div class="stat-label">Words Found</div>
-        </div>
-        <div class="stat">
-          <div class="stat-value" id="statUnique">0</div>
-          <div class="stat-label">Unique Words</div>
-        </div>
-        <div class="stat">
-          <div class="stat-value" id="statLevel">—</div>
-          <div class="stat-label">Level</div>
-        </div>
-      </div>
-      <div class="results-actions">
-        <button class="action-btn" id="copyBtn">
-          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-          Copy
-        </button>
-        <button class="action-btn" id="exportBtn">
-          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Export CSV
-        </button>
-        <button class="action-btn" id="saveToLibBtn">
-          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-          Save
-        </button>
-      </div>
-    </div>
- 
-    <div class="filter-bar">
-      <input class="search-input" type="text" id="filterInput" placeholder="Filter words…"/>
-      <select class="sort-select" id="sortSelect">
-        <option value="alpha">A → Z</option>
-        <option value="freq">Frequency</option>
-        <option value="length">Length</option>
-      </select>
-    </div>
- 
-    <div class="word-grid" id="wordGrid"></div>
-  </div>
-</main>
 </div>
- 
-<!-- Library Modal -->
-<div class="modal-overlay" id="libModal">
-  <div class="modal">
-    <div class="modal-head">
-      <h2>Book Library</h2>
-      <button class="modal-close" id="libClose">
-        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+
+<!-- ══ SESSION ══ -->
+<div class="screen hidden" id="session">
+
+  <div class="topbar">
+    <span class="topbar-brand">SpeakUp AI</span>
+    <div class="topbar-right">
+      <span class="topic-pill" id="topic-pill" onclick="nextTopic()">—</span>
+      <button class="icon-btn" onclick="openSettings()" title="Voice settings">⚙</button>
+      <button class="icon-btn" onclick="goBack()" title="Back">←</button>
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <!-- AI panel -->
+    <div class="ai-panel">
+      <div class="plabel">🤖 SpeakUp AI</div>
+      <div class="think" id="think"><span></span><span></span><span></span></div>
+      <div class="ai-text" id="ai-text">—</div>
+      <div class="user-area">
+        <div class="plabel" style="margin-bottom:6px">🎤 You said</div>
+        <div class="user-said" id="user-text">Tap the mic and speak, or type below…</div>
+      </div>
+    </div>
+
+    <!-- MIC panel -->
+    <div class="mic-panel">
+      <button class="big-mic" id="big-mic" onclick="toggleMic()">
+        <svg viewBox="0 0 24 24"><path d="M12 1a4 4 0 0 1 4 4v6a4 4 0 0 1-8 0V5a4 4 0 0 1 4-4zm6 9a1 1 0 0 1 2 0 8 8 0 0 1-7 7.93V20h2a1 1 0 0 1 0 2H9a1 1 0 0 1 0-2h2v-2.07A8 8 0 0 1 4 10a1 1 0 0 1 2 0 6 6 0 0 0 12 0z"/></svg>
       </button>
-    </div>
-    <div class="modal-body">
-      <div class="upload-to-lib">
-        <input type="text" id="libBookName" placeholder="Book title (optional)"/>
-        <label style="flex-shrink:0">
-          <input type="file" accept=".pdf,image/*" id="libFileInput" style="display:none"/>
-          <div class="upload-lib-btn" style="cursor:pointer; padding:10px 20px; background:var(--accent); border-radius:var(--radius-sm); color:#0a0a10; font-weight:600; font-size:14px; display:flex; align-items:center; gap:8px;">
-            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><polyline points="7 9 12 4 17 9"/><line x1="12" y1="4" x2="12" y2="16"/></svg>
-            Upload
+      <div class="mic-right">
+        <div class="status-row">
+          <div class="sdot" id="sdot"></div>
+          <div class="waveform" id="waveform">
+            <div class="wb"></div><div class="wb"></div><div class="wb"></div>
+            <div class="wb"></div><div class="wb"></div>
           </div>
-        </label>
+          <span class="stext" id="stext">Ready</span>
+        </div>
+        <span class="mic-hint" id="mic-hint">Tap to speak</span>
+        <div id="ff-notice" class="ff-notice">Firefox voice not supported — use text input below or switch to Chrome</div>
+        <div class="text-row" id="text-row">
+          <input class="txt-in" id="txt-in" type="text" placeholder="Or type here…" onkeydown="handleKey(event)"/>
+          <button class="send-btn" onclick="sendText()">
+            <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+          </button>
+        </div>
       </div>
-      <div class="lib-list" id="libList">
-        <div class="empty-lib">Your library is empty.<br>Upload your first book above.</div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="right-panel">
+
+      <div class="panel-card">
+        <div class="plabel">Session</div>
+        <div class="scores">
+          <div class="sc-item"><div class="sc-num" id="sc-c">0</div><div class="sc-lbl">Correct</div></div>
+          <div class="sc-item"><div class="sc-num" id="sc-e" style="color:var(--err)">0</div><div class="sc-lbl">Errors</div></div>
+          <div class="sc-item"><div class="sc-num" id="sc-t">0</div><div class="sc-lbl">Turns</div></div>
+        </div>
+      </div>
+
+      <div class="panel-card">
+        <div class="plabel">Topic</div>
+        <div class="topic-row">
+          <span class="topic-name" id="tc-name">—</span>
+          <button class="next-btn" onclick="nextTopic()">Next →</button>
+        </div>
+      </div>
+
+      <div class="panel-card err-panel" style="flex:1;display:flex;flex-direction:column;min-height:0;">
+        <div class="plabel">Corrections</div>
+        <div class="err-scroll" id="err-list">
+          <div class="no-err">✓ No errors yet!<br><span style="font-size:11px">Real-time corrections<br>appear here</span></div>
+        </div>
+      </div>
+
+      <div class="tip-card">
+        <div class="tip-title">💡 Tip</div>
+        <div class="tip-body" id="tip-body">Speak naturally — fluency matters more than perfection!</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══ SETTINGS MODAL ══ -->
+<div class="modal-overlay" id="modal" onclick="outsideClose(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">⚙ Voice Settings</span>
+      <button class="close-modal" onclick="closeSettings()">✕</button>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-lbl">Voice Gender</div>
+      <div class="setting-btns" id="g-btns">
+        <button class="s-btn active" data-val="female" onclick="setGender(this)">👩 Female</button>
+        <button class="s-btn" data-val="male" onclick="setGender(this)">👨 Male</button>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-lbl">Speech Speed</div>
+      <div class="setting-btns" id="sp-btns">
+        <button class="s-btn" data-val="0.65" onclick="setSpeed(this)">🐢 Slow</button>
+        <button class="s-btn active" data-val="0.9" onclick="setSpeed(this)">🚶 Normal</button>
+        <button class="s-btn" data-val="1.1" onclick="setSpeed(this)">🏃 Fast</button>
+        <button class="s-btn" data-val="1.3" onclick="setSpeed(this)">⚡ Very Fast</button>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-lbl">Accent</div>
+      <div class="setting-btns" id="ac-btns">
+        <button class="s-btn active" data-val="en-US" onclick="setAccent(this)">🇺🇸 American</button>
+        <button class="s-btn" data-val="en-GB" onclick="setAccent(this)">🇬🇧 British</button>
+        <button class="s-btn" data-val="en-AU" onclick="setAccent(this)">🇦🇺 Australian</button>
+      </div>
+    </div>
+
+    <div class="setting-row" style="margin-bottom:0">
+      <div class="setting-lbl">Input Method</div>
+      <div class="setting-btns" id="inp-btns">
+        <button class="s-btn active" data-val="both" onclick="setInput(this)">🎤 + ⌨ Both</button>
+        <button class="s-btn" data-val="mic" onclick="setInput(this)">🎤 Mic only</button>
+        <button class="s-btn" data-val="text" onclick="setInput(this)">⌨ Text only</button>
       </div>
     </div>
   </div>
 </div>
- 
-<!-- Word Tooltip -->
-<div class="word-tooltip" id="wordTooltip">
-  <div class="wt-word" id="ttWord"></div>
-  <div class="wt-level" id="ttLevel"></div>
-</div>
- 
-<!-- Toast Container -->
-<div class="toast-container" id="toastContainer"></div>
- 
+
 <script>
-// ═══════════════════════════════════════════════════════
-//  CEFR Word Lists (representative samples)
-// ═══════════════════════════════════════════════════════
- 
-const CEFR_WORDLISTS = {
-  A1: new Set(`a able about above across after again against age ago agree all also always am an and angry animal another answer any are area arm around arrive as ask at away back bad bag ball be beautiful because bed before behind big bird blue body book born both boy bring brown build bus but buy by call can car care carry cat change check child children choose city clean close clothes cold come computer cook correct country cut dark day dear decide different difficult dinner do does dog door down draw dream drink drive dry during each early eat egg end enjoy enough even evening every example eye face fall family far fast father feel feet few find first fish floor flower fly follow food foot for free friend from full game garden get girl give go good great green group grow guess had hair hand happen hard hat have he head health hear help her here him his hit home hope hot hotel house how however hungry idea if ill important in interesting into its itself job just keep kind know large last laugh learn leave left less life light like listen little live look love low lunch many may me mean meet mind money month more morning most move much must my near never new next nice night no now of old on only open or our out over own page part past people perhaps phone pick picture place plan play please point pull push put question quick quiet read ready real receive red remember result right road room round run same say school sea season seem send several shop show since sit sky sleep slow small smile so some sometimes sorry sound speak stay stop street strong student study sun sure table take talk than thank that the their them then there these they think through time to today together too travel true try turn understand until up us use very walk want warm was wash watch water we weather welcome what when where which while white who will win with word work world year yes yet you young`.split(' ')),
-  A2: new Set(`accident account across activity actually add address afraid afternoon ago agree air already although always angry another anybody anything anyway apartment area arrange arrive ask at attack avoid awful bank bath because bedroom begin believe below beside between birthday book both borrow bottle break bridge bright bring broken busy button call camp carefully carry cash catch cause central certainly chair chance cheap check choice choose cinema clearly climb close collect college comfortable comment compare complaint complete computer concern continue conversation correct could crowd culture customer cut dance decide definitely delay department describe desk difficult direction disagree discount discuss door double doubt dream during each earn easy effort else enjoy enough especially evening event everything exact example except exciting exercise expensive explain extra factory fail famous far fast favour feel figure finally fine fish flat follow foreign forget friendly full funny future garden generally glass government ground group half happen happy hate health heavy help history hobby holiday home hope hotel however hundred husband idea imagine important improve include increase inside instead interested interview invite issue join keep kind knock kitchen knowledge language large late laugh law learn letter library like listen local look loud lovely luck lunch manner married match matter maybe meal meanwhile member memory method middle might mind mistake modern moment morning move much museum music name natural neither night noise normally note nothing notice now object offer office often once open opinion order outside own pack page park party passenger patient pay perform phone picture plan please poor position post prepare pretty price private problem process program progress promise protect proud prove public push question quick quiet quite reach read reason recent recommend relation relax remember repair respect return review rise road rule save science search season section seem sense serious share shift shop short single sir sister situation skill slightly slow smart smell smoke society soft soon spare speak special spend stand station stay step still stop straight strange stress student stuff style subject suddenly suggest summer support suppose surprised telephone thank therefore throughout ticket tired together tomorrow tour towards traditional train travel trouble type understand until unusual usually vegetable visit voice wait want weather week welcome whether whole wide wife win world worry worse wrong young`.split(' ')),
-  B1: new Set(`abandon ability absence abstract accept access accident account accuse achieve acknowledge acquire action adapt adequate adjust administration admit adopt advance affair affect afford agency aggressive agree aid aim alternative ambiguous annual apparent apply appreciate approach approve argument arrange assessment assist assume attempt attitude authority available aware balance barrier behave believe benefit border capable category cause claim clarify collect combine comment commit communication compare compete complete complex concept concern conclude conduct confident confirm conflict consequence consist contact continue contribute control convention convince cooperate cope correct council create critical culture currently damage deal debate decrease definition demand demonstrate depend describe design detail determine develop differ difficult disability discover discuss document domestic doubt dramatic economic effect efficient encourage environment equal establish evaluate evidence evolve exchange exist expand experience explain explore express extend fail feature financial focus follow formal fund fundamental future generation govern government guess guide impact implement improve include indicate influence inform investigate involve issue legal maintain manage material measure mention method moderate monitor necessary negative normally observe obtain obvious operate opportunity organize outcome overcome participate pattern perform persuade physical policy positive potential practice predict prepare present prevent principle probable process progress promote proper provide publish qualify range reaction reasonable recognise recover reduce refer reflect region regulate relate release relevant require research respond result reveal risk satisfy schedule separate significant similar situation solve specific standard statement status strategy structure study successful suggest sufficient support sustainable task tend theory throughout transfer transform transition treat typical understand unique update various village volunteer welfare widespread`.split(' ')),
-  B2: new Set(`abolish abstract accomplish accumulate accurate acknowledge acquisition adaptation administration advocate aesthetic agenda aggregate alienate allocate ambiguous ambitious analogous analysis anticipate apparent application appropriate approximate arbitrary assessment assumption atmosphere attribute benchmark bias breakthrough bureaucracy calculate capable capacity clarify cognitive coherent collaborate commitment commodity communicate comparable compensate competitive comprehensive conclude conduct conflict considerable consistent constitute constraint controversial coordinate correspond criteria critical crucial cultural debate decline dedicate deduce demonstrate derive designate determine discrimination distinction distribute document dominant dramatic economic eliminate emerge emphasis endeavour enforce enhance enterprise estimate ethical evaluate evident evolve exclude execute facilitate financial flexible formulate framework fundamental generate global hypothesis identify implement implication incentive incorporate indicate inevitable influence infrastructure inherent innovation integral investigate justify label launch legislative legitimate maintain manipulate mechanism minimize modify negotiate objective obtain occupy option organisation perceive policy potential predict principal process promote proportion pursue react rational recommend regulate reinforce reluctant resource restrict reveal rigorous role sector significant simulate specific speculative strategy sufficient supplement sustainable systematic technique theory tradition transform transition undermine undertake unique unprecedented update variable vital widespread`.split(' ')),
-  C1: new Set(`abate aberration abide abstraction abundance accentuate accommodate accumulate achieve acute adamant adhere adjacent aesthetic affirm aggravate aggregate albeit alienate allege allocate ambivalent ameliorate amend analogous anomaly antagonize apparent apprehend articulate assert assimilate attest attribute augment autonomous benchmark bias bolster bureaucratic catalyst circumvent coerce coherent collaborate commemorate compelling compensate competent concede concise confront connotation consolidate contemplate contentious contradict controversial convey credible criteria culminate cynical deduce deter deviate discreet discrepancy disparate displace disseminate diverse elaborate eloquent emerge eminent empirical encompass endeavour entail equivocal eradicate essence evolve execute exert explicit facilitate fallacy formulate fundamental generate genuine governance hypothetical illustrate imminent implicit incentive inherent innovate insight intensify intrinsic invoke justify legislation legitimate mitigate modify mutual narrate negate nuance obscure optimal orthodox paradox perceive plausible pragmatic predominant premise prevalent prohibit rationalize reconcile refute reinforce relegate rely scrutinize sequence sophisticated speculate substantial supplement sustain synthesize theoretical transform transition underlying unprecedented validate viable`.split(' ')),
-  C2: new Set(`abeyance abstruse acrimony adumbrate aggrandize alacrity ameliorate anachronism anathema anecdotal anomalous antithetical apocryphal approbation arcane arduous assiduous atavistic augment auspicious autonomous axiom baroque byzantine capricious castigate categorical circumlocution cogent commensurate compunction conjecture contrite corroborate culpable delineate derivative desultory dialectic diaphanous didactic dilettante disconcert discursive dissemble dogmatic ebullient efficacious effrontery egregious elicit elliptical embroil empirical endemic ephemeral equivocate erudite esoteric euphemism exacerbate excoriate exigent expedient extrapolate facile fallacious fastidious fatuous felicitous filibuster garrulous germane gratuitous gregarious hegemony heterodox hubris iconoclast idiosyncratic immutable impugn inchoate incongruous inculcate inexorable ingenuous insidious interpolate inveterate laconic loquacious malfeasance mendacious mitigate nascent nefarious obfuscate oblique obsequious obtuse ominous opprobrium ostensible paradoxical pedantic pejorative perfidious perspicacious platitude plausible polemic pragmatic precipitate predilection presuppose propitious proscribe querulous rectitude recondite reprehensible rhetorical sanguine sardonic scrupulous spurious stoic stratagem subjugate subversive sycophant taciturn tendentious terse transgress ubiquitous vacillate verbose verisimilitude vexatious vicarious vindicate vituperative volatile zealous`.split(' '))
+// ══════════════════════════════
+//  DATA
+// ══════════════════════════════
+const TOPICS = [
+  "Daily Routines","Travel & Holidays","Food & Cooking","Technology",
+  "Sports & Fitness","Movies & TV Shows","Work & Career","Family & Relationships",
+  "Hobbies & Interests","Environment","Health & Wellbeing","Future Plans",
+  "Social Media","Education","Music & Arts"
+];
+const TIPS = [
+  "Use connectors: 'however', 'moreover', 'in addition' to sound fluent.",
+  "Think in English — don't translate word by word from your native language.",
+  "Record yourself and listen back — you'll notice patterns you miss while speaking.",
+  "Pausing is natural! Native speakers pause too — it's not a mistake.",
+  "Try to answer in full sentences, not just single words.",
+  "Shadowing — repeat what you hear immediately after — is one of the fastest ways to improve.",
+  "Read English content aloud every day — even 5 minutes makes a difference.",
+  "Focus on one mistake pattern at a time rather than trying to fix everything.",
+];
+
+// ══════════════════════════════
+//  STATE
+// ══════════════════════════════
+const S = {
+  topicIdx:0, history:[], scores:{c:0,e:0,t:0},
+  busy:false, recognizing:false, recog:null, tipIdx:0,
+  gender:'female', speed:0.9, accent:'en-US', inputMode:'both',
+  voices:[], isFirefox: /firefox/i.test(navigator.userAgent),
 };
- 
-const LEVEL_DESCRIPTIONS = {
-  A1: '<strong>A1 — Beginner:</strong> Basic everyday expressions and simple phrases. ~500–700 word families.',
-  A2: '<strong>A2 — Elementary:</strong> Familiar topics like shopping, family, and surroundings. ~1,000–1,500 word families.',
-  B1: '<strong>B1 — Intermediate:</strong> Threshold level. Main points of standard input on familiar matters. ~2,000–3,500 word families.',
-  B2: '<strong>B2 — Upper Intermediate:</strong> Complex text on abstract or concrete topics. ~4,000–6,000 word families.',
-  C1: '<strong>C1 — Advanced:</strong> Wide range of demanding texts with implicit meaning. ~8,000–12,000 word families.',
-  C2: '<strong>C2 — Mastery:</strong> Near-native fluency, nuanced academic and professional language. ~16,000+ word families.'
-};
- 
-// ═══════════════════════════════════════════════════════
-//  State
-// ═══════════════════════════════════════════════════════
-let currentFile = null;
-let currentPdfDoc = null;
-let selectedLevel = 'B1';
-let extractedWords = [];
-let filteredWords = [];
-let currentResults = {};
- 
-// ═══════════════════════════════════════════════════════
-//  Animated Background Canvas
-// ═══════════════════════════════════════════════════════
-(function() {
-  const canvas = document.getElementById('bg-canvas');
-  const ctx = canvas.getContext('2d');
-  let W, H, particles = [];
- 
-  function resize() {
-    W = canvas.width = window.innerWidth;
-    H = canvas.height = window.innerHeight;
-  }
-  resize();
-  window.addEventListener('resize', resize);
- 
-  const DARK_COLORS = ['rgba(200,169,110,', 'rgba(126,200,200,', 'rgba(180,130,200,'];
-  const LIGHT_COLORS = ['rgba(160,120,64,', 'rgba(58,138,138,', 'rgba(140,100,160,'];
- 
-  function getColors() {
-    return document.documentElement.getAttribute('data-theme') === 'light' ? LIGHT_COLORS : DARK_COLORS;
-  }
- 
-  for (let i = 0; i < 55; i++) {
-    particles.push({
-      x: Math.random() * 1200,
-      y: Math.random() * 900,
-      r: Math.random() * 2.5 + 0.5,
-      vx: (Math.random() - 0.5) * 0.25,
-      vy: (Math.random() - 0.5) * 0.25,
-      alpha: Math.random() * 0.5 + 0.1,
-      colorIdx: Math.floor(Math.random() * 3),
-      pulse: Math.random() * Math.PI * 2
-    });
-  }
- 
-  // Draw flowing curves
-  function drawOrb(x, y, radius, alpha, colorBase) {
-    const grad = ctx.createRadialGradient(x, y, 0, x, y, radius);
-    grad.addColorStop(0, colorBase + alpha + ')');
-    grad.addColorStop(1, colorBase + '0)');
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.fill();
-  }
- 
-  let frame = 0;
-  function animate() {
-    ctx.clearRect(0, 0, W, H);
-    const colors = getColors();
-    frame++;
- 
-    // Big ambient orbs
-    const t = frame * 0.003;
-    drawOrb(W * 0.15 + Math.sin(t) * 60, H * 0.3 + Math.cos(t * 0.7) * 40, 280, 0.06, colors[0]);
-    drawOrb(W * 0.85 + Math.cos(t * 0.6) * 80, H * 0.2 + Math.sin(t * 0.9) * 50, 220, 0.05, colors[2]);
-    drawOrb(W * 0.5 + Math.sin(t * 0.4) * 100, H * 0.8 + Math.cos(t * 0.5) * 30, 300, 0.04, colors[1]);
- 
-    // Particles
-    particles.forEach(p => {
-      p.x += p.vx;
-      p.y += p.vy;
-      p.pulse += 0.02;
-      if (p.x < 0) p.x = W;
-      if (p.x > W) p.x = 0;
-      if (p.y < 0) p.y = H;
-      if (p.y > H) p.y = 0;
- 
-      const pulseAlpha = p.alpha * (0.7 + 0.3 * Math.sin(p.pulse));
-      drawOrb(p.x, p.y, p.r * 30, pulseAlpha * 0.3, colors[p.colorIdx]);
- 
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-      ctx.fillStyle = colors[p.colorIdx] + pulseAlpha + ')';
-      ctx.fill();
-    });
- 
-    requestAnimationFrame(animate);
-  }
-  animate();
-})();
- 
-// ═══════════════════════════════════════════════════════
-//  Theme Toggle
-// ═══════════════════════════════════════════════════════
-document.getElementById('themeToggle').addEventListener('click', () => {
-  const html = document.documentElement;
-  html.setAttribute('data-theme', html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
-});
- 
-// ═══════════════════════════════════════════════════════
-//  Toast
-// ═══════════════════════════════════════════════════════
-function toast(msg, type='success') {
-  const el = document.createElement('div');
-  el.className = `toast ${type}`;
-  el.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">${type==='success'?'<polyline points="20 6 9 17 4 12"/>':'<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>'}</svg>${msg}`;
-  document.getElementById('toastContainer').appendChild(el);
-  setTimeout(() => { el.style.animation='toastOut 0.3s ease forwards'; setTimeout(()=>el.remove(),300); }, 3000);
+const synth = window.speechSynthesis;
+
+// ══════════════════════════════
+//  VOICES
+// ══════════════════════════════
+function loadVoices(){ S.voices = synth.getVoices(); }
+loadVoices();
+synth.addEventListener && synth.addEventListener('voiceschanged', loadVoices);
+if(typeof synth.onvoiceschanged !== 'undefined') synth.onvoiceschanged = loadVoices;
+setTimeout(loadVoices, 500);
+
+function pickVoice(){
+  if(!S.voices.length) S.voices = synth.getVoices();
+  const lang = S.accent;
+  const isFem = S.gender === 'female';
+
+  const femaleKw = ['Samantha','Karen','Victoria','Susan','Moira','Tessa','Fiona','Zira','Catherine','Hazel','Eva','Allison','Ava','Joanna','female','Female'];
+  const maleKw   = ['Daniel','Alex','Tom','Fred','Lee','Aaron','Rishi','David','James','male','Male','Gordon','Oliver'];
+
+  let pool = S.voices.filter(v => v.lang.startsWith(lang.slice(0,2)));
+  if(!pool.length) pool = S.voices.filter(v => v.lang.startsWith('en'));
+  if(!pool.length) pool = S.voices;
+
+  const preferred = pool.find(v => (isFem ? femaleKw : maleKw).some(k => v.name.includes(k)));
+  if(preferred) return preferred;
+
+  // Fallback: avoid opposite gender if possible
+  const avoidKw = isFem ? maleKw : femaleKw;
+  return pool.find(v => !avoidKw.some(k => v.name.includes(k))) || pool[isFem ? 0 : 1] || pool[0];
 }
- 
-// ═══════════════════════════════════════════════════════
-//  File Upload
-// ═══════════════════════════════════════════════════════
-const fileInput = document.getElementById('fileInput');
-const uploadZone = document.getElementById('uploadZone');
-const filePreview = document.getElementById('filePreview');
-const filePreviewName = document.getElementById('filePreviewName');
- 
-uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
-uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
-uploadZone.addEventListener('drop', e => {
-  e.preventDefault();
-  uploadZone.classList.remove('drag-over');
-  const f = e.dataTransfer.files[0];
-  if (f) handleFile(f);
-});
-fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
- 
-async function handleFile(file) {
-  currentFile = file;
-  currentPdfDoc = null;
-  filePreview.style.display = 'flex';
-  filePreviewName.textContent = file.name + ' (' + (file.size/1024).toFixed(1) + ' KB)';
- 
-  if (file.type === 'application/pdf') {
-    try {
-      const buf = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-      currentPdfDoc = pdf;
-      const pageCount = pdf.numPages;
-      document.getElementById('pdfPageCount').textContent = `Total pages: ${pageCount}`;
-      document.getElementById('endPage').value = pageCount;
-      document.getElementById('endPage').max = pageCount;
-      document.getElementById('startPage').max = pageCount;
-    } catch(e) {
-      toast('Could not read PDF metadata', 'error');
-    }
-  } else {
-    document.getElementById('pdfPageCount').textContent = 'Image file — single page scan.';
-    document.getElementById('startPage').value = 1;
-    document.getElementById('endPage').value = 1;
+
+// ══════════════════════════════
+//  SCREENS
+// ══════════════════════════════
+function startSession(){
+  document.getElementById('idle').classList.add('hidden');
+  document.getElementById('session').classList.remove('hidden');
+  updateTopicUI();
+  rotateTip();
+  applyInputMode();
+  // Show Firefox notice if needed
+  if(S.isFirefox){
+    document.getElementById('ff-notice').style.display='block';
   }
-  toast('File loaded: ' + file.name);
+  askFirst();
 }
- 
-// ═══════════════════════════════════════════════════════
-//  Level Selector
-// ═══════════════════════════════════════════════════════
-document.querySelectorAll('.level-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.level-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    selectedLevel = btn.dataset.level;
-    const desc = document.getElementById('levelDesc');
-    desc.innerHTML = LEVEL_DESCRIPTIONS[selectedLevel];
-    desc.classList.add('show');
+
+function goBack(){
+  synth.cancel(); stopMic();
+  document.getElementById('session').classList.add('hidden');
+  document.getElementById('idle').classList.remove('hidden');
+  S.history=[];S.scores={c:0,e:0,t:0};S.busy=false;
+  document.getElementById('err-list').innerHTML='<div class="no-err">✓ No errors yet!<br><span style="font-size:11px">Real-time corrections<br>appear here</span></div>';
+  document.getElementById('ai-text').textContent='—';
+  document.getElementById('user-text').textContent='Tap the mic and speak, or type below…';
+  updateScores();
+}
+
+function updateTopicUI(){
+  const t=TOPICS[S.topicIdx];
+  document.getElementById('topic-pill').textContent=t;
+  document.getElementById('tc-name').textContent=t;
+}
+
+function nextTopic(){
+  synth.cancel(); stopMic();
+  S.topicIdx=(S.topicIdx+1)%TOPICS.length;
+  updateTopicUI();
+  S.history=[];S.busy=false;
+  document.getElementById('ai-text').textContent='—';
+  document.getElementById('user-text').textContent='Tap the mic and speak, or type below…';
+  document.getElementById('err-list').innerHTML='<div class="no-err">✓ No errors yet!<br><span style="font-size:11px">Real-time corrections<br>appear here</span></div>';
+  S.scores={c:0,e:0,t:0}; updateScores();
+  askFirst();
+}
+
+function rotateTip(){
+  const el=document.getElementById('tip-body');
+  el.style.opacity=0;
+  setTimeout(()=>{ el.textContent=TIPS[S.tipIdx++%TIPS.length]; el.style.opacity=1; },400);
+  setTimeout(rotateTip,28000);
+}
+
+// ══════════════════════════════
+//  STATUS
+// ══════════════════════════════
+function setStatus(m){
+  const dot=document.getElementById('sdot');
+  const txt=document.getElementById('stext');
+  const wf=document.getElementById('waveform');
+  const bars=document.querySelectorAll('.wb');
+  dot.className='sdot'; wf.style.display='none';
+  bars.forEach(b=>b.classList.remove('a'));
+  if(m==='l'){ dot.classList.add('l'); txt.textContent='Listening…'; wf.style.display='flex'; bars.forEach(b=>b.classList.add('a')); }
+  else if(m==='t'){ dot.classList.add('t'); txt.textContent='Thinking…'; }
+  else if(m==='s'){ dot.classList.add('s'); txt.textContent='AI speaking…'; }
+  else { txt.textContent='Ready'; }
+}
+
+// ══════════════════════════════
+//  API
+// ══════════════════════════════
+async function claudeAPI(sys, msgs){
+  const res = await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,system:sys,messages:msgs})
   });
-});
- 
-// ═══════════════════════════════════════════════════════
-//  Text Extraction
-// ═══════════════════════════════════════════════════════
-async function extractTextFromPDF(file, startPage, endPage) {
-  const buf = await file.arrayBuffer();
-  const pdf = currentPdfDoc || await pdfjsLib.getDocument({ data: buf }).promise;
-  const total = pdf.numPages;
-  const s = Math.max(1, startPage);
-  const e = Math.min(total, endPage);
-  let fullText = '';
- 
-  for (let i = s; i <= e; i++) {
-    setProgress(((i - s) / (e - s + 1)) * 70, `Reading page ${i} of ${e}…`);
-    const page = await pdf.getPage(i);
-    const tc = await page.getTextContent();
-    fullText += tc.items.map(it => it.str).join(' ') + ' ';
+  const d = await res.json();
+  const raw = d.content?.[0]?.text||'{}';
+  try{ return JSON.parse(raw.replace(/```json|```/g,'').trim()); }
+  catch{ return {reply:raw,errors:[],hasErrors:false}; }
+}
+
+async function askFirst(){
+  S.busy=true;
+  const topic=TOPICS[S.topicIdx];
+  showThink(true); setStatus('t');
+  const sys=`You are SpeakUp AI. Start an English speaking session about "${topic}". Return ONLY valid JSON, no markdown: {"reply":"Warm greeting + one engaging open-ended question about ${topic} (max 2 sentences)","errors":[],"hasErrors":false}`;
+  try{
+    const r=await claudeAPI(sys,[{role:'user',content:'Start.'}]);
+    showThink(false);
+    document.getElementById('ai-text').textContent=r.reply;
+    S.history.push({role:'assistant',content:r.reply});
+    speak(r.reply);
+  }catch{
+    showThink(false);
+    const fb=`Hi! Let's practice English. Tell me — what comes to mind first when you think about "${TOPICS[S.topicIdx]}"?`;
+    document.getElementById('ai-text').textContent=fb;
+    S.history.push({role:'assistant',content:fb});
+    speak(fb);
   }
-  return fullText;
 }
- 
-async function extractTextFromImage(file) {
-  // Use Anthropic API to extract text from image
-  setProgress(20, 'Reading image with AI…');
-  const base64 = await fileToBase64(file);
-  const mediaType = file.type || 'image/jpeg';
- 
-  const resp = await fetch('https://api.anthropic.com/v1/messages', {
-    method:'POST',
-    headers:{ 'Content-Type':'application/json', 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
-    body: JSON.stringify({
-      model:'claude-sonnet-4-20250514',
-      max_tokens:4000,
-      messages:[{
-        role:'user',
-        content:[
-          { type:'image', source:{ type:'base64', media_type:mediaType, data:base64 } },
-          { type:'text', text:'Extract and return ALL text from this image. Return only the text, nothing else, no explanations.' }
-        ]
-      }]
-    })
-  });
-  const data = await resp.json();
-  return data.content?.[0]?.text || '';
-}
- 
-function fileToBase64(file) {
-  return new Promise((res, rej) => {
-    const r = new FileReader();
-    r.onload = () => res(r.result.split(',')[1]);
-    r.onerror = rej;
-    r.readAsDataURL(file);
-  });
-}
- 
-// ═══════════════════════════════════════════════════════
-//  Word Analysis
-// ═══════════════════════════════════════════════════════
-function analyzeText(text, level) {
-  const wordList = CEFR_WORDLISTS[level];
-  const words = text.toLowerCase().match(/\b[a-z]{3,}\b/g) || [];
-  const freq = {};
-  words.forEach(w => {
-    const base = stemWord(w);
-    if (wordList.has(base) || wordList.has(w)) {
-      const key = wordList.has(w) ? w : base;
-      freq[key] = (freq[key] || 0) + 1;
-    }
-  });
-  return freq;
-}
- 
-function stemWord(word) {
-  // Simple stemmer: strip common suffixes
-  return word
-    .replace(/ing$/, '').replace(/tion$/, '').replace(/tions$/, '')
-    .replace(/ness$/, '').replace(/ment$/, '').replace(/ments$/, '')
-    .replace(/ful$/, '').replace(/less$/, '').replace(/able$/, '')
-    .replace(/ible$/, '').replace(/ous$/, '').replace(/ive$/, '')
-    .replace(/ies$/, 'y').replace(/ied$/, 'y')
-    .replace(/es$/, '').replace(/s$/, '').replace(/ed$/, '').replace(/er$/, '').replace(/ly$/, '');
-}
- 
-// ═══════════════════════════════════════════════════════
-//  Scan
-// ═══════════════════════════════════════════════════════
-function setProgress(pct, label) {
-  document.getElementById('progressBar').style.width = pct + '%';
-  document.getElementById('progressText').textContent = label;
-  document.getElementById('progressPct').textContent = Math.round(pct) + '%';
-}
- 
-document.getElementById('scanBtn').addEventListener('click', async () => {
-  if (!currentFile) { toast('Please upload a file first.', 'error'); return; }
- 
-  const scanBtn = document.getElementById('scanBtn');
-  const spinner = document.getElementById('spinner');
-  const scanIcon = document.getElementById('scanIcon');
-  const scanLabel = document.getElementById('scanLabel');
-  const progressWrap = document.getElementById('progressWrap');
- 
-  scanBtn.disabled = true;
-  spinner.classList.add('show');
-  scanIcon.style.display = 'none';
-  scanLabel.textContent = 'Scanning…';
-  progressWrap.classList.add('show');
- 
-  try {
-    let text = '';
-    const startPage = parseInt(document.getElementById('startPage').value) || 1;
-    const endPage = parseInt(document.getElementById('endPage').value) || 9999;
- 
-    setProgress(5, 'Loading file…');
- 
-    if (currentFile.type === 'application/pdf') {
-      text = await extractTextFromPDF(currentFile, startPage, endPage);
-    } else {
-      text = await extractTextFromImage(currentFile);
-    }
- 
-    setProgress(75, 'Analysing vocabulary…');
-    await sleep(200);
- 
-    const freq = analyzeText(text, selectedLevel);
-    currentResults = freq;
- 
-    setProgress(90, 'Building word list…');
-    await sleep(200);
- 
-    const words = Object.entries(freq).sort((a,b) => b[1] - a[1]);
-    extractedWords = words;
-    filteredWords = words;
- 
-    setProgress(100, 'Done!');
-    await sleep(300);
- 
-    renderResults(words);
-    toast(`Found ${words.length} ${selectedLevel} words!`);
- 
-  } catch(err) {
-    console.error(err);
-    toast('Scan failed: ' + err.message, 'error');
-  } finally {
-    scanBtn.disabled = false;
-    spinner.classList.remove('show');
-    scanIcon.style.display = '';
-    scanLabel.textContent = 'Scan Document';
-    progressWrap.classList.remove('show');
+
+async function processUser(text){
+  S.busy=true;
+  document.getElementById('user-text').textContent='"'+text+'"';
+  S.history.push({role:'user',content:text});
+  S.scores.t++; updateScores();
+  showThink(true); setStatus('t');
+  const topic=TOPICS[S.topicIdx];
+  const sys=`You are SpeakUp AI, a friendly English speaking coach. Topic: "${topic}".
+Return ONLY valid JSON (no markdown):
+{"reply":"Natural response + follow-up question (2-3 sentences)","errors":[{"type":"Grammar|Vocabulary|Pronunciation|Structure","wrong":"exact wrong phrase","correct":"corrected version","tip":"why (max 12 words)"}],"hasErrors":true/false}
+Rules: max 2 real errors per turn. Be warm and encouraging. If user writes in Turkish or Azerbaijani, gently ask them to try English.`;
+  try{
+    const r=await claudeAPI(sys,[...S.history]);
+    showThink(false);
+    if(r.hasErrors&&r.errors?.length){ S.scores.e+=r.errors.length; renderErrors(r.errors); }
+    else { S.scores.c++; }
+    updateScores();
+    document.getElementById('ai-text').textContent=r.reply;
+    S.history.push({role:'assistant',content:r.reply});
+    speak(r.reply);
+  }catch{
+    showThink(false); S.busy=false; setStatus('');
+    document.getElementById('ai-text').textContent='Connection error. Please try again.';
   }
-});
- 
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
- 
-// ═══════════════════════════════════════════════════════
-//  Render Results
-// ═══════════════════════════════════════════════════════
-function renderResults(words) {
-  const section = document.getElementById('resultsSection');
-  section.classList.add('show');
-  section.scrollIntoView({ behavior:'smooth', block:'start' });
- 
-  const totalOccurrences = words.reduce((s,[,c]) => s+c, 0);
-  document.getElementById('statWords').textContent = totalOccurrences;
-  document.getElementById('statUnique').textContent = words.length;
-  document.getElementById('statLevel').textContent = selectedLevel;
- 
-  renderWordGrid(words);
 }
- 
-function renderWordGrid(words) {
-  const grid = document.getElementById('wordGrid');
-  if (words.length === 0) {
-    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted)">No words found at this level in the selected page range.</div>';
+
+function showThink(v){
+  document.getElementById('think').style.display=v?'flex':'none';
+  if(v) document.getElementById('ai-text').textContent='';
+}
+
+function renderErrors(errs){
+  const list=document.getElementById('err-list');
+  const empty=list.querySelector('.no-err'); if(empty) empty.remove();
+  errs.forEach(e=>{
+    const d=document.createElement('div'); d.className='err-card';
+    d.innerHTML=`<div class="err-type">⚠ ${e.type||'Error'}</div><div class="err-wrong">✗ "${e.wrong}"</div><div class="err-right">✓ "${e.correct}"</div><div class="err-tip">${e.tip}</div>`;
+    list.prepend(d);
+  });
+  const all=list.querySelectorAll('.err-card');
+  if(all.length>10) all[all.length-1].remove();
+}
+
+function updateScores(){
+  document.getElementById('sc-c').textContent=S.scores.c;
+  document.getElementById('sc-e').textContent=S.scores.e;
+  document.getElementById('sc-t').textContent=S.scores.t;
+}
+
+// ══════════════════════════════
+//  TTS
+// ══════════════════════════════
+function speak(text){
+  synth.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang=S.accent; u.rate=S.speed; u.pitch=S.gender==='female'?1.08:0.88;
+  const v=pickVoice(); if(v) u.voice=v;
+  u.onstart=()=>setStatus('s');
+  u.onend=()=>{ setStatus(''); S.busy=false; document.getElementById('mic-hint').textContent='Tap to speak'; };
+  u.onerror=()=>{ setStatus(''); S.busy=false; };
+  synth.speak(u);
+}
+
+// ══════════════════════════════
+//  MICROPHONE
+// ══════════════════════════════
+function toggleMic(){
+  if(S.recognizing){ stopMic(); return; }
+  if(S.isFirefox){
+    // Firefox doesn't support Web Speech API — focus text input
+    document.getElementById('ff-notice').style.display='block';
+    document.getElementById('txt-in').focus();
     return;
   }
-  grid.innerHTML = words.map(([word, count], i) => `
-    <div class="word-card" data-word="${word}" data-count="${count}" style="animation-delay:${Math.min(i*0.02,0.5)}s">
-      <div class="word-text">${word}</div>
-      <div class="word-count">×${count}</div>
-    </div>
-  `).join('');
- 
-  grid.querySelectorAll('.word-card').forEach(card => {
-    card.addEventListener('mouseenter', e => showTooltip(e, card.dataset.word, card.dataset.count));
-    card.addEventListener('mouseleave', hideTooltip);
-  });
+  if(S.busy){ synth.cancel(); S.busy=false; }
+  startMic();
 }
- 
-// ═══════════════════════════════════════════════════════
-//  Filter & Sort
-// ═══════════════════════════════════════════════════════
-document.getElementById('filterInput').addEventListener('input', applyFilter);
-document.getElementById('sortSelect').addEventListener('change', applyFilter);
- 
-function applyFilter() {
-  const q = document.getElementById('filterInput').value.toLowerCase();
-  const sort = document.getElementById('sortSelect').value;
-  let words = extractedWords.filter(([w]) => w.includes(q));
- 
-  if (sort === 'alpha') words.sort((a,b) => a[0].localeCompare(b[0]));
-  else if (sort === 'freq') words.sort((a,b) => b[1]-a[1]);
-  else if (sort === 'length') words.sort((a,b) => b[0].length-a[0].length);
- 
-  filteredWords = words;
-  renderWordGrid(words);
-}
- 
-// ═══════════════════════════════════════════════════════
-//  Tooltip
-// ═══════════════════════════════════════════════════════
-const tooltip = document.getElementById('wordTooltip');
-function showTooltip(e, word, count) {
-  document.getElementById('ttWord').textContent = word;
-  document.getElementById('ttLevel').textContent = `${selectedLevel} · appears ${count}×`;
-  tooltip.style.display = 'block';
-  moveTooltip(e);
-}
-document.addEventListener('mousemove', e => { if (tooltip.style.display === 'block') moveTooltip(e); });
-function moveTooltip(e) {
-  const x = e.clientX + 16;
-  const y = e.clientY - 10;
-  tooltip.style.left = Math.min(x, window.innerWidth - 260) + 'px';
-  tooltip.style.top = y + 'px';
-}
-function hideTooltip() { tooltip.style.display = 'none'; }
- 
-// ═══════════════════════════════════════════════════════
-//  Actions: Copy / Export / Save
-// ═══════════════════════════════════════════════════════
-document.getElementById('copyBtn').addEventListener('click', () => {
-  const text = filteredWords.map(([w,c]) => `${w} (×${c})`).join('\n');
-  navigator.clipboard.writeText(text).then(() => toast('Copied to clipboard!'));
-});
- 
-document.getElementById('exportBtn').addEventListener('click', () => {
-  const csv = 'Word,Level,Frequency\n' + filteredWords.map(([w,c]) => `${w},${selectedLevel},${c}`).join('\n');
-  const blob = new Blob([csv], { type:'text/csv' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `lexiscan_${selectedLevel}_${Date.now()}.csv`;
-  a.click();
-  toast('CSV exported!');
-});
- 
-document.getElementById('saveToLibBtn').addEventListener('click', async () => {
-  if (!currentFile) return;
-  await uploadToLibrary(currentFile, currentFile.name);
-});
- 
-// ═══════════════════════════════════════════════════════
-//  Library / Firebase
-// ═══════════════════════════════════════════════════════
-const libModal = document.getElementById('libModal');
-document.getElementById('libBtn').addEventListener('click', () => {
-  libModal.classList.add('show');
-  loadLibrary();
-});
-document.getElementById('libClose').addEventListener('click', () => libModal.classList.remove('show'));
-libModal.addEventListener('click', e => { if (e.target === libModal) libModal.classList.remove('show'); });
- 
-document.getElementById('libFileInput').addEventListener('change', async () => {
-  const file = document.getElementById('libFileInput').files[0];
-  if (!file) return;
-  const name = document.getElementById('libBookName').value.trim() || file.name;
-  await uploadToLibrary(file, name);
-  loadLibrary();
-});
- 
-async function uploadToLibrary(file, name) {
-  if (!window._firebase) { toast('Firebase not ready', 'error'); return; }
-  const { storage, db, ref, uploadBytes, getDownloadURL, collection, addDoc } = window._firebase;
- 
-  toast('Uploading to library…');
-  try {
-    const storageRef = ref(storage, `books/${Date.now()}_${file.name}`);
-    await uploadBytes(storageRef, file);
-    const url = await getDownloadURL(storageRef);
-    await addDoc(collection(db, 'books'), {
-      name,
-      fileName: file.name,
-      url,
-      size: file.size,
-      type: file.type,
-      createdAt: Date.now()
-    });
-    toast('Saved to library!');
-    document.getElementById('libBookName').value = '';
-  } catch(e) {
-    console.error(e);
-    toast('Upload failed: ' + e.message, 'error');
+
+function startMic(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){
+    // No Web Speech API — show notice, focus text input
+    document.getElementById('ff-notice').style.display='block';
+    document.getElementById('txt-in').focus();
+    return;
   }
-}
- 
-async function loadLibrary() {
-  if (!window._firebase) return;
-  const { db, collection, getDocs, query, orderBy } = window._firebase;
-  const libList = document.getElementById('libList');
-  libList.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:13px">Loading…</div>';
- 
-  try {
-    const q = query(collection(db, 'books'), orderBy('createdAt', 'desc'));
-    const snap = await getDocs(q);
-    if (snap.empty) {
-      libList.innerHTML = '<div class="empty-lib">Your library is empty.<br>Upload your first book above.</div>';
-      return;
+
+  const r = new SR();
+  r.lang = S.accent;
+  r.continuous = false;
+  r.interimResults = false;
+  r.maxAlternatives = 1;
+
+  r.onstart = ()=>{
+    S.recognizing=true; S.recog=r;
+    document.getElementById('big-mic').classList.add('listening');
+    document.getElementById('mic-hint').textContent='Listening… tap to stop';
+    setStatus('l');
+  };
+
+  r.onresult = e=>{
+    const t = e.results[0][0].transcript.trim();
+    stopMic();
+    if(t) processUser(t);
+  };
+
+  r.onspeechend = ()=>{ try{ r.stop(); }catch(e){} };
+
+  r.onerror = e=>{
+    console.warn('SR error:', e.error);
+    stopMic();
+    if(e.error==='not-allowed'||e.error==='service-not-allowed'){
+      document.getElementById('mic-hint').textContent='Mic access denied — use text input';
+      document.getElementById('ff-notice').style.display='block';
+      document.getElementById('ff-notice').textContent='Microphone access denied. Please allow mic in browser settings, or type below.';
+    } else if(e.error==='no-speech'){
+      document.getElementById('mic-hint').textContent='No speech detected — try again';
     }
-    libList.innerHTML = snap.docs.map(doc => {
-      const d = doc.data();
-      const size = (d.size/1024/1024).toFixed(1);
-      const date = new Date(d.createdAt).toLocaleDateString();
-      const isPdf = d.type === 'application/pdf';
-      return `<div class="lib-item">
-        <div class="lib-item-icon">
-          <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">${isPdf?'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>':'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>'}</svg>
-        </div>
-        <div class="lib-item-info">
-          <div class="lib-item-name">${d.name}</div>
-          <div class="lib-item-meta">${size} MB · ${date}</div>
-        </div>
-        <button class="lib-item-use" data-url="${d.url}" data-type="${d.type}" data-name="${d.name}">Use →</button>
-      </div>`;
-    }).join('');
- 
-    libList.querySelectorAll('.lib-item-use').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const url = btn.dataset.url;
-        const type = btn.dataset.type;
-        const name = btn.dataset.name;
-        toast('Loading from library…');
-        libModal.classList.remove('show');
- 
-        // Fetch the file from Firebase Storage
-        try {
-          const resp = await fetch(url);
-          const blob = await resp.blob();
-          const file = new File([blob], name, { type });
-          await handleFile(file);
-          toast('Book loaded: ' + name);
-        } catch(e) {
-          toast('Could not load file', 'error');
-        }
-      });
-    });
-  } catch(e) {
-    libList.innerHTML = '<div class="empty-lib">Could not load library.</div>';
-    console.error(e);
+  };
+
+  r.onend = ()=>{
+    S.recognizing=false;
+    document.getElementById('big-mic').classList.remove('listening');
+    document.getElementById('mic-hint').textContent='Tap to speak';
+    if(document.getElementById('stext').textContent==='Listening…') setStatus('');
+  };
+
+  try{ r.start(); }
+  catch(err){ console.error('r.start() error:', err); stopMic(); }
+}
+
+function stopMic(){
+  if(S.recog){
+    try{ S.recog.stop(); }catch(e){}
+    S.recog=null;
   }
+  S.recognizing=false;
+  document.getElementById('big-mic').classList.remove('listening');
+  document.getElementById('mic-hint').textContent='Tap to speak';
+  if(document.getElementById('stext').textContent==='Listening…') setStatus('');
+}
+
+// ══════════════════════════════
+//  TEXT INPUT
+// ══════════════════════════════
+function sendText(){
+  const inp=document.getElementById('txt-in');
+  const t=inp.value.trim(); if(!t) return;
+  inp.value='';
+  if(S.busy){ synth.cancel(); S.busy=false; }
+  processUser(t);
+}
+function handleKey(e){ if(e.key==='Enter') sendText(); }
+
+// ══════════════════════════════
+//  SETTINGS
+// ══════════════════════════════
+function openSettings(){ document.getElementById('modal').classList.add('open'); }
+function closeSettings(){ document.getElementById('modal').classList.remove('open'); }
+function outsideClose(e){ if(e.target===document.getElementById('modal')) closeSettings(); }
+
+function setGender(btn){
+  document.querySelectorAll('#g-btns .s-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); S.gender=btn.dataset.val;
+}
+function setSpeed(btn){
+  document.querySelectorAll('#sp-btns .s-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); S.speed=parseFloat(btn.dataset.val);
+}
+function setAccent(btn){
+  document.querySelectorAll('#ac-btns .s-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); S.accent=btn.dataset.val;
+}
+function setInput(btn){
+  document.querySelectorAll('#inp-btns .s-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); S.inputMode=btn.dataset.val; applyInputMode();
+}
+function applyInputMode(){
+  const mic=document.getElementById('big-mic');
+  const tr=document.getElementById('text-row');
+  if(S.inputMode==='mic'){ mic.style.display='flex'; tr.style.display='none'; }
+  else if(S.inputMode==='text'){ mic.style.display='none'; tr.style.display='flex'; }
+  else { mic.style.display='flex'; tr.style.display='flex'; }
 }
 </script>
 </body>
